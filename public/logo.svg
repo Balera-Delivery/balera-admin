@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0062D2" />
+      <stop offset="50%" stop-color="#1B59F8" />
+      <stop offset="100%" stop-color="#0B3C95" />
+    </linearGradient>
+    <linearGradient id="wolfGrad" x1="0%" y1="30%" x2="100%" y2="70%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="40%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Ring -->
+  <circle cx="200" cy="200" r="188" fill="#FFFFFF" stroke="#0056B3" stroke-width="11" />
+
+  <!-- Inner subtle border -->
+  <circle cx="200" cy="200" r="181" fill="none" stroke="#E0E7FF" stroke-width="2" />
+
+  <!-- Main Brand Name: BALERA -->
+  <text x="50" y="185" font-family="'Plus Jakarta Sans', 'Arial Black', Impact, sans-serif" font-size="52" font-weight="900" font-style="italic" fill="url(#blueGrad)" letter-spacing="2">BALERA</text>
+  
+  <!-- Subtitle: DELIVERY -->
+  <text x="52" y="222" font-family="'Plus Jakarta Sans', 'Arial Black', Impact, sans-serif" font-size="21" font-weight="800" font-style="italic" fill="#0B3C95" letter-spacing="3.5">DELIVERY</text>
+
+  <!-- Horizontal speed motion lines behind wolf -->
+  <path d="M 195 210 L 260 210 M 205 218 L 248 218 M 215 226 L 255 226" stroke="#0284C7" stroke-width="3.5" stroke-linecap="round" />
+
+  <!-- Stylized Ethiopian Wolf / Speed Courier Head -->
+  <g transform="translate(245, 125) scale(0.68)">
+    <!-- Ears -->
+    <path d="M 50 40 L 75 -25 L 95 30 Z" fill="#0284C7" />
+    <path d="M 60 30 L 76 -10 L 88 28 Z" fill="#FFFFFF" />
+    
+    <path d="M 85 45 L 120 -15 L 128 40 Z" fill="#1E40AF" />
+    <path d="M 95 35 L 118 0 L 122 35 Z" fill="#93C5FD" />
+
+    <!-- Wolf Mane & Head Flowing Waves -->
+    <path d="M 20 65 Q 60 50 100 45 Q 140 40 180 85 L 170 95 Q 130 65 95 70 Q 55 78 20 65 Z" fill="url(#wolfGrad)" />
+    <path d="M 5 95 Q 50 80 105 75 Q 165 72 205 105 L 195 118 Q 145 92 90 98 Q 45 105 5 95 Z" fill="#0284C7" />
+    <path d="M 15 130 Q 65 110 120 108 Q 185 106 215 125 L 205 138 Q 160 125 110 128 Q 55 135 15 130 Z" fill="#1D4ED8" />
+
+    <!-- Snout & Nose -->
+    <path d="M 140 85 Q 180 95 215 125 L 210 135 Q 170 128 140 120 Z" fill="#FFFFFF" stroke="#1E40AF" stroke-width="2" />
+    <circle cx="212" cy="126" r="6" fill="#0F172A" />
+
+    <!-- Eye -->
+    <ellipse cx="145" cy="85" rx="7" ry="4" fill="#0F172A" transform="rotate(-15 145 85)" />
+    
+    <!-- Dynamic lower jaw and chin tufts -->
+    <path d="M 125 130 L 175 138 L 155 155 L 190 150 L 150 175 L 120 155 Z" fill="url(#wolfGrad)" />
+  </g>
+
+  <!-- Thin ornamental divider -->
+  <line x1="80" y1="252" x2="320" y2="252" stroke="#93C5FD" stroke-width="1.5" />
+  <circle cx="200" cy="252" r="3" fill="#1B59F8" />
+
+  <!-- Slogan English -->
+  <text x="200" y="274" font-family="'Plus Jakarta Sans', sans-serif" font-size="14" font-weight="700" fill="#00438F" text-anchor="middle" letter-spacing="0.5">From Bale. Delivered Smart.</text>
+
+  <!-- Slogan Afaan Oromoo -->
+  <text x="200" y="296" font-family="'Plus Jakarta Sans', sans-serif" font-size="14" font-weight="700" fill="#00438F" text-anchor="middle" letter-spacing="0.5">Balee Irraa. Sirnaan Geessina.</text>
+</svg>
