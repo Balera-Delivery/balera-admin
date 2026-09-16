@@ -43,4 +43,11 @@ export const deliveryApi = {
     const res = await apiClient.post(`/admin/deliveries/${cleanId}/cancel`, { reason });
     return res.data;
   },
+
+  // Update & Verify Customer Payment Status
+  updatePaymentStatus: async (deliveryId, paymentStatus) => {
+    const cleanId = String(deliveryId).replace('#', '');
+    const res = await apiClient.patch(`/admin/deliveries/${cleanId}/payment-status`, { paymentStatus });
+    return res.data;
+  },
 };

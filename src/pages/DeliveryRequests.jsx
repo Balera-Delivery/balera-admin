@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Filter, Calendar, Eye, UserPlus, ArrowUpDown } from 'lucide-react';
+import { Search, Filter, Calendar, Eye, UserPlus, ArrowUpDown, UtensilsCrossed, Package } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { AssignRiderModal } from '../components/modals/AssignRiderModal';
 import { useDelivery } from '../context/DeliveryContext';
@@ -101,40 +101,64 @@ export const DeliveryRequests = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {filteredDeliveries.map((delivery) => (
-                <tr key={delivery.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td 
-                    onClick={() => navigate(`/deliveries/${delivery.backendId || delivery.id.replace('#', '')}`)}
-                    className="px-6 py-4 font-bold text-brand-600 cursor-pointer"
-                  >
+                <tr 
+                  key={delivery.id} 
+                  onClick={() => navigate(`/deliveries/${delivery.backendId || delivery.id.replace('#', '')}`)}
+                  className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                >
+                  <td className="px-6 py-4 font-bold text-brand-600 group-hover:underline">
                     {delivery.id}
                   </td>
-                  <td 
-                    onClick={() => navigate(`/deliveries/${delivery.backendId || delivery.id.replace('#', '')}`)}
-                    className="px-6 py-4 font-bold text-slate-900 cursor-pointer"
-                  >
+                  <td className="px-6 py-4 font-bold text-slate-900">
                     {delivery.customerName}
                   </td>
-                  <td className="px-6 py-4 text-slate-600">{delivery.pickupLocation}</td>
-                  <td className="px-6 py-4 text-slate-600">{delivery.destination}</td>
+                  <td className="px-6 py-4 text-slate-600">
+                    <div className="flex items-center gap-1.5">
+                      {delivery.isFoodOrder ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                          <UtensilsCrossed className="w-3 h-3" />
+                          <span>Food</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 shrink-0">
+                          <Package className="w-3 h-3" />
+                          <span>{delivery.itemType || 'Item'}</span>
+                        </span>
+                      )}
+                      <span className="font-semibold text-slate-900 truncate max-w-[200px]" title={delivery.pickupLocation}>
+                        {delivery.pickupLocation}
+                      </span>
+                    </div>
+                    {delivery.restaurant && (
+                      <span className="text-[11px] text-brand-600 font-medium block mt-0.5">
+                        {delivery.restaurant.name}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-slate-600 truncate max-w-[200px]" title={delivery.destination}>
+                    {delivery.destination}
+                  </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={delivery.status} />
                   </td>
                   <td className="px-6 py-4 text-slate-400 font-medium">{delivery.time}</td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {delivery.status === 'Pending' && (
+                    <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                      {/* Reassign button only appears after assignment */}
+                      {delivery.status !== 'Pending' && delivery.status !== 'Completed' && delivery.status !== 'Cancelled' && (
                         <button
                           onClick={() => setSelectedDeliveryToAssign(delivery)}
-                          className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+                          className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs border border-blue-200"
+                          title="Reassign to another rider"
                         >
                           <UserPlus className="w-3.5 h-3.5" />
-                          <span>Assign</span>
+                          <span>Reassign</span>
                         </button>
                       )}
                       <button
                         onClick={() => navigate(`/deliveries/${delivery.backendId || delivery.id.replace('#', '')}`)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                        title="View Delivery Details & Route Map"
+                        title="View Delivery Details & Receipt Verification"
                       >
                         <Eye className="w-4 h-4" />
                       </button>

@@ -27,6 +27,19 @@ export const normalizeDeliveryStatus = (s) => {
   }
 };
 
+// Helper to normalize payment option into one of 3 customer options (Telebirr, CBE, Awash Bank)
+export const normalizePaymentOption = (method) => {
+  if (!method) return 'Telebirr';
+  const str = String(method).toLowerCase().trim();
+  if (str.includes('cbe') || str.includes('commercial') || str.includes('ethiopia')) {
+    return 'Commercial Bank of Ethiopia (CBE)';
+  }
+  if (str.includes('awash')) {
+    return 'Awash Bank';
+  }
+  return 'Telebirr';
+};
+
 // Helper to normalize rider account status
 export const normalizeRiderAccountStatus = (s) => {
   if (!s) return 'Active';
@@ -38,6 +51,8 @@ export const normalizeRiderAccountStatus = (s) => {
 
 // Helper to format backend delivery into frontend model
 export const formatBackendDelivery = (d, i = 0) => {
+  if (!d) return null;
+
   const safeNum = (val, fallback) => {
     const n = Number(val);
     return (!isNaN(n) && n !== 0) ? n : fallback;
@@ -48,10 +63,10 @@ export const formatBackendDelivery = (d, i = 0) => {
   const destLat = safeNum(d.destinationLatitude, 9.0345);
   const destLng = safeNum(d.destinationLongitude, 38.7512);
 
-  // Safely extract OTP code string (avoiding rendering raw objects in React)
-  let otpCodeString = '4921';
-  if (d.otp && typeof d.otp === 'object') {
-    otpCodeString = d.otp.otpCode || '4921';
+  // Extract OTP safely
+  let otpCodeString = '4829';
+  if (d.otp && typeof d.otp === 'object' && d.otp.otpCode) {
+    otpCodeString = String(d.otp.otpCode);
   } else if (d.otpCode) {
     otpCodeString = String(d.otpCode);
   } else if (d.otp && typeof d.otp === 'string') {
@@ -59,18 +74,127 @@ export const formatBackendDelivery = (d, i = 0) => {
   }
 
   // Tracking ID
-  const displayId = d.trackingNumber 
-    ? (d.trackingNumber.startsWith('#') ? d.trackingNumber : `#${d.trackingNumber}`)
+  const trackingNumber = d.trackingCode || d.trackingNumber || d.id;
+  const displayId = trackingNumber 
+    ? (trackingNumber.startsWith('#') ? trackingNumber : `#${trackingNumber}`)
     : (d.id?.startsWith('DLV') ? (d.id.startsWith('#') ? d.id : `#${d.id}`) : `#DLV-${String(i+1).padStart(4, '0')}`);
+
+  // Payment & Receipt Details (Normalized strictly to Telebirr, CBE, or Awash Bank)
+  const receiptUrl = d.receiptUrl || d.order?.receiptUrl || d.paymentReceipt || d.receipt || null;
+  const rawPaymentMethod = d.paymentMethod || d.order?.paymentMethod || 'Telebirr';
+  const paymentMethod = normalizePaymentOption(rawPaymentMethod);
+  const paymentStatus = d.paymentStatus || d.order?.paymentStatus || (receiptUrl ? 'Paid (Pending Verification)' : 'Pending');
+
+  // Food Order & Restaurant Data extraction
+  let restaurant = d.order?.restaurant || d.restaurant || null;
+  let orderItems = Array.isArray(d.order?.items)
+    ? d.order.items
+    : Array.isArray(d.items)
+    ? d.items
+    : [];
+
+  const combinedText = `${d.pickupLocation || ''} ${d.itemDescription || ''} ${d.itemType || ''}`;
+
+  // Smart restaurant discovery from text if not explicitly joined
+  if (!restaurant) {
+    const hotelPatterns = [
+      { name: "Sana'a Restaurant", aliases: ["Sana'a", "Sanaa", "SANA'A RESTAURANT"], category: "Traditional Yemeni & Ethiopian", address: "Bale Robe, Commercial St", phone1: "+251 91 222 3344", phone2: "" },
+      { name: "Green Caffee Restaurant", aliases: ["Green Coffee", "Green Cafe"], category: "Cafe & Restaurant", address: "Main Commercial Ave, Bale Robe", phone1: "+251 91 100 2233", phone2: "" },
+      { name: "Bale Mountain Lodge Hotel", aliases: ["Bale Mountain", "Mountain Lodge"], category: "Luxury Hotel & Restaurant", address: "Bale National Park, Rira", phone1: "+251 92 333 4455", phone2: "" },
+      { name: "Wabe Shebele Hotel", aliases: ["Wabe Shebele"], category: "Hotel & Dining", address: "Central Square, Bale Robe", phone1: "+251 93 444 5566", phone2: "" },
+      { name: "Goba Ras Hotel", aliases: ["Goba Ras", "Ras Hotel"], category: "Heritage Hotel & Kitchen", address: "Goba Road, Bale", phone1: "+251 94 555 6677", phone2: "" },
+      { name: "Orchide Hotel & Restaurant", aliases: ["Orchide", "Orchid"], category: "Hotel & Restaurant", address: "Airport Road, Bale Robe", phone1: "+251 95 666 7788", phone2: "" },
+      { name: "Tullu Dimtu View Restaurant", aliases: ["Tullu Dimtu"], category: "Panoramic Restaurant", address: "Viewpoint Hill, Bale Robe", phone1: "+251 96 777 8899", phone2: "" },
+      { name: "Sof Omar Traditional Kitchen", aliases: ["Sof Omar"], category: "Traditional Cultural Cuisine", address: "Heritage Ave, Bale Robe", phone1: "+251 97 888 9900", phone2: "" },
+      { name: "Bale Star Fast Food & Cafe", aliases: ["Bale Star"], category: "Fast Food & Cafe", address: "University Ave, Bale Robe", phone1: "+251 98 999 0011", phone2: "" },
+      { name: "Dallo Cafe & Pastry", aliases: ["Dallo"], category: "Pastry & Coffee Bar", address: "Market Square, Bale Robe", phone1: "+251 99 000 1122", phone2: "" },
+    ];
+
+    const matched = hotelPatterns.find(h => 
+      combinedText.toLowerCase().includes(h.name.toLowerCase()) ||
+      h.aliases.some(a => combinedText.toLowerCase().includes(a.toLowerCase()))
+    );
+
+    if (matched) {
+      restaurant = {
+        id: matched.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        code: `HTL-${matched.name.substring(0, 3).toUpperCase()}`,
+        name: matched.name,
+        category: matched.category,
+        address: matched.address,
+        phone1: matched.phone1,
+        phone2: matched.phone2,
+        rating: 4.8,
+        deliveryFee: 60,
+      };
+    } else if (/restaurant|hotel|caffee|cafe|lodge|kitchen/i.test(combinedText)) {
+      // Extract restaurant name after dash or from pickup
+      const nameMatch = d.itemDescription?.match(/-\s*([A-Za-z0-9\s'&]+(?:Restaurant|Hotel|Cafe|Lodge|Kitchen)?)/i) ||
+                         d.pickupLocation?.match(/([A-Za-z0-9\s'&]+(?:Restaurant|Hotel|Cafe|Lodge|Kitchen))/i);
+      const extractedName = nameMatch ? nameMatch[1].trim() : (d.pickupLocation || 'Partner Food Establishment');
+      restaurant = {
+        id: 'partner-hotel',
+        code: 'HTL-PAR',
+        name: extractedName,
+        category: 'Partner Food Establishment',
+        address: d.pickupLocation || 'Bale Robe, Ethiopia',
+        phone1: '',
+        phone2: '',
+        rating: 4.8,
+        deliveryFee: 60,
+      };
+    }
+  }
+
+  // Parse items from text if orderItems array is empty (e.g. "2x Faxiraa (600 Birr) - SANA'A RESTAURANT")
+  if (orderItems.length === 0 && d.itemDescription) {
+    const dishMatch = d.itemDescription.match(/(\d+)\s*x\s*([^(]+?)(?:\s*\((?:ETB\s*|Birr\s*)?(\d+(?:\.\d+)?)\s*(?:Birr|ETB)?\))?(?:\s*-\s*(.+))?$/i);
+    if (dishMatch) {
+      const qty = parseInt(dishMatch[1], 10) || 1;
+      const itemName = dishMatch[2].trim();
+      const rawTotal = dishMatch[3] ? parseFloat(dishMatch[3]) : 0;
+      const unitPrice = rawTotal > 0 ? (rawTotal / qty) : 300;
+      orderItems = [{
+        id: `dish-1`,
+        name: itemName,
+        quantity: qty,
+        price: unitPrice,
+        subtotal: rawTotal > 0 ? rawTotal : (unitPrice * qty),
+        notes: '',
+        category: 'Partner Special'
+      }];
+    }
+  }
+
+  const isFoodOrder =
+    (d.itemType &&
+      (d.itemType.toLowerCase().includes('food') ||
+        d.itemType.toLowerCase().includes('restaurant') ||
+        d.itemType.toLowerCase().includes('meal'))) ||
+    !!restaurant ||
+    orderItems.length > 0 ||
+    /restaurant|hotel|caffee|cafe|lodge|faxiraa|tibs|burger|pizza|doro|firfir|haniid/i.test(combinedText);
+
+  const subtotal = d.order?.subtotal !== undefined
+    ? Number(d.order.subtotal)
+    : orderItems.reduce((acc, it) => acc + (Number(it.price || 0) * Number(it.quantity || 1)), 0);
+
+  const deliveryFee = d.order?.deliveryFee !== undefined
+    ? Number(d.order.deliveryFee)
+    : (restaurant?.deliveryFee ? Number(restaurant.deliveryFee) : Number(d.fee || 60));
+
+  const totalAmount = d.order?.totalAmount !== undefined
+    ? Number(d.order.totalAmount)
+    : (subtotal > 0 ? (subtotal + deliveryFee) : (Number(d.amount ? String(d.amount).replace(/[^0-9.]/g, '') : 60) || 60));
 
   return {
     id: displayId,
     backendId: d.id,
-    trackingNumber: d.trackingNumber || d.id,
+    trackingNumber: d.trackingNumber || d.trackingCode || d.id,
     customerId: d.customerId,
     customerName: d.customer?.fullName || d.customerName || 'Valued Customer',
     customerPhone: d.customer?.phoneNumber || d.customerPhone || '+251 91 100 0000',
-    pickupLocation: d.pickupLocation || 'Bole, Addis Ababa',
+    pickupLocation: d.pickupLocation || (restaurant ? `${restaurant.name}, ${restaurant.address}` : 'Bole, Addis Ababa'),
     pickupAddressDetail: d.pickupAddressDetail || d.pickupLocation || 'Addis Ababa',
     destination: d.destination || 'Piassa, Addis Ababa',
     destinationAddressDetail: d.destinationAddressDetail || d.destination || 'Addis Ababa',
@@ -81,14 +205,20 @@ export const formatBackendDelivery = (d, i = 0) => {
     riderVehicle: d.rider?.vehicleInfo || d.riderVehicle || null,
     time: d.createdAt ? new Date(d.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM',
     date: d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today',
-    itemType: d.itemType || 'Parcel',
-    itemDescription: d.itemDescription || 'Package Delivery',
+    itemType: d.itemType || (isFoodOrder ? 'Food' : 'Package'),
+    itemDescription: d.itemDescription || (isFoodOrder && restaurant ? `Food Order from ${restaurant.name}` : 'Package Delivery'),
     receiverName: d.receiverName || 'Recipient',
     receiverPhone: d.receiverPhone || '+251 92 200 0000',
     specialInstructions: d.specialInstructions || '',
-    amount: `ETB ${Number(d.fee || 120).toFixed(2)}`,
-    fee: Number(d.fee || 120),
+    amount: `ETB ${totalAmount.toFixed(2)}`,
+    fee: deliveryFee,
+    subtotal: subtotal,
+    totalAmount: totalAmount,
     otp: otpCodeString,
+    // Payment and uploaded receipt
+    paymentMethod,
+    paymentStatus,
+    receiptUrl,
     routeCoordinates: [
       [pickupLat, pickupLng],
       [destLat, destLng]
@@ -96,6 +226,38 @@ export const formatBackendDelivery = (d, i = 0) => {
     riderPosition: d.rider?.latitude ? [Number(d.rider.latitude), Number(d.rider.longitude)] : null,
     distance: d.distanceKm ? `${d.distanceKm} km` : '5.8 km',
     statusLogs: Array.isArray(d.statusLogs) ? d.statusLogs : [],
+    // Rich Food & Restaurant metadata
+    isFoodOrder,
+    order: d.order || null,
+    restaurant: restaurant ? {
+      id: restaurant.code || restaurant.id,
+      backendId: restaurant.id,
+      code: restaurant.code || restaurant.id,
+      name: restaurant.name,
+      category: restaurant.category || 'Cafe & Restaurant',
+      cuisineType: restaurant.cuisineType || 'Local & Traditional',
+      phone1: restaurant.phone1 || '',
+      phone2: restaurant.phone2 || '',
+      address: restaurant.address || 'Bale Robe, Ethiopia',
+      rating: restaurant.rating || 4.8,
+      deliveryFee: restaurant.deliveryFee || 60,
+      deliveryTime: restaurant.deliveryTime || '25 - 40 min',
+      banner: restaurant.banner || '',
+      avatar: restaurant.avatar || '',
+      status: restaurant.status || 'Active',
+    } : null,
+    orderItems: orderItems.map(it => ({
+      id: it.id,
+      foodItemId: it.foodItemId,
+      name: it.name || it.foodItem?.name || 'Dish Item',
+      price: Number(it.price !== undefined ? it.price : (it.foodItem?.price || 0)),
+      quantity: Number(it.quantity || 1),
+      subtotal: Number(it.subtotal !== undefined ? it.subtotal : (Number(it.price || it.foodItem?.price || 0) * Number(it.quantity || 1))),
+      notes: it.notes || '',
+      image: it.foodItem?.image || '',
+      tag: it.foodItem?.tag || '',
+      category: it.foodItem?.category || '',
+    })),
   };
 };
 
@@ -479,6 +641,28 @@ export const DeliveryProvider = ({ children }) => {
     }
   };
 
+  // Update & Verify Payment Status
+  const updatePaymentStatus = async (deliveryId, paymentStatus) => {
+    try {
+      await deliveryApi.updatePaymentStatus(deliveryId, paymentStatus);
+    } catch (e) {
+      console.warn('Backend updatePaymentStatus notice:', e.message);
+    }
+
+    setDeliveries(prev => prev.map(d => {
+      if (d.id === deliveryId || d.backendId === deliveryId || d.trackingNumber === deliveryId) {
+        return {
+          ...d,
+          paymentStatus,
+        };
+      }
+      return d;
+    }));
+
+    setTimeout(syncWithBackend, 500);
+    return true;
+  };
+
   return (
     <DeliveryContext.Provider value={{
       customers,
@@ -499,6 +683,7 @@ export const DeliveryProvider = ({ children }) => {
       assignRider,
       changeDeliveryStatus,
       cancelDelivery,
+      updatePaymentStatus,
       addPayment,
       markPaymentPaid,
       updateSettings,
