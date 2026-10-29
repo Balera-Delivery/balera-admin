@@ -9,12 +9,13 @@ import {
   XCircle, 
   AlertTriangle,
   Send,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 
 export const Notifications = () => {
-  const { notifications, unreadCount, markAllAsRead, markAsRead, addNotification } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, markAsRead, deleteNotification, clearAllNotifications, addNotification } = useNotifications();
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [targetAudience, setTargetAudience] = useState('all');
   const [isSending, setIsSending] = useState(false);
@@ -62,15 +63,32 @@ export const Notifications = () => {
           <p className="text-xs font-medium text-slate-400 mt-0.5">System notifications and dispatch activity logs</p>
         </div>
 
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-brand-600 rounded-xl text-xs font-bold shadow-sm transition-all"
-          >
-            <CheckCheck className="w-4 h-4" />
-            <span>Mark all as read</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2.5">
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-brand-600 rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <CheckCheck className="w-4 h-4" />
+              <span>Mark all read</span>
+            </button>
+          )}
+
+          {notifications.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to delete all notifications?')) {
+                  clearAllNotifications();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 rounded-xl text-xs font-bold shadow-sm transition-all"
+              title="Delete all notifications"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear all</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Broadcast Announcement Bar (Admin feature from SRS 10.11) */}
@@ -135,9 +153,22 @@ export const Notifications = () => {
               </div>
             </div>
 
-            {!notif.isRead && (
-              <span className="w-2 h-2 rounded-full bg-brand-600 flex-shrink-0 mt-2"></span>
-            )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {!notif.isRead && (
+                <span className="w-2 h-2 rounded-full bg-brand-600"></span>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteNotification(notif.id);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                title="Delete notification"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         ))}
 

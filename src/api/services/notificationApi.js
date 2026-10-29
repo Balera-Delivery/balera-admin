@@ -19,6 +19,18 @@ export const notificationApi = {
     return res.data;
   },
 
+  // Delete Single Notification
+  deleteNotification: async (id) => {
+    const res = await apiClient.delete(`/notifications/${id}`);
+    return res.data;
+  },
+
+  // Clear All Notifications
+  clearAllNotifications: async () => {
+    const res = await apiClient.delete('/notifications');
+    return res.data;
+  },
+
   // Admin Send Broadcast or Targeted Notification
   sendNotification: async ({ targetRole = 'ALL', targetUserId = null, title, message }) => {
     const payload = { targetRole, title, message };

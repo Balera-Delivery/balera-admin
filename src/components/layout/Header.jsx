@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Bell, ChevronDown, Check, RefreshCw, Radio } from 'lucide-react';
+import { Search, Bell, ChevronDown, Check, RefreshCw, Radio, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 export const Header = ({ title = 'Dashboard', subtitle = 'Overview of all delivery operations' }) => {
   const { adminUser } = useAuth();
   const { backendStatus, syncWithBackend } = useDelivery();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const [showNotifs, setShowNotifs] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
@@ -109,12 +109,25 @@ export const Header = ({ title = 'Dashboard', subtitle = 'Overview of all delive
                       navigate('/notifications');
                       setShowNotifs(false);
                     }}
-                    className={`py-2.5 px-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors ${
+                    className={`py-2.5 px-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors flex items-start justify-between gap-2 group ${
                       !notif.isRead ? 'bg-blue-50/40' : ''
                     }`}
                   >
-                    <p className="text-xs font-medium text-slate-800 line-clamp-2">{notif.title}</p>
-                    <span className="text-[10px] text-slate-400 mt-1 block">{notif.time}</span>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-slate-800 line-clamp-2">{notif.title}</p>
+                      <span className="text-[10px] text-slate-400 mt-1 block">{notif.time}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotification(notif.id);
+                      }}
+                      className="p-1 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+                      title="Delete notification"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>

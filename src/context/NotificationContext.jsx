@@ -52,6 +52,24 @@ export const NotificationProvider = ({ children }) => {
     setNotifications(prev => prev.map(n => n.id === id ? ({ ...n, isRead: true }) : n));
   };
 
+  const deleteNotification = async (id) => {
+    try {
+      await notificationApi.deleteNotification(id);
+    } catch (e) {
+      console.warn('Backend deleteNotification notice:', e.message);
+    }
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await notificationApi.clearAllNotifications();
+    } catch (e) {
+      console.warn('Backend clearAllNotifications notice:', e.message);
+    }
+    setNotifications([]);
+  };
+
   const addNotification = async ({ title, message, targetRole = 'ALL', type = 'info', iconColor }) => {
     try {
       await notificationApi.sendNotification({
@@ -81,6 +99,8 @@ export const NotificationProvider = ({ children }) => {
       unreadCount,
       markAllAsRead,
       markAsRead,
+      deleteNotification,
+      clearAllNotifications,
       addNotification
     }}>
       {children}
