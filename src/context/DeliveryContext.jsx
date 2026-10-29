@@ -542,6 +542,77 @@ export const DeliveryProvider = ({ children }) => {
     setRiders(prev => prev.map(r => r.id === id ? { ...r, accountStatus: nextStatus } : r));
   };
 
+  const toggleRiderDeactivation = async (id) => {
+    try {
+      await riderApi.toggleDeactivation(id);
+    } catch (e) {
+      console.warn('Backend toggleDeactivation notice:', e.message);
+    }
+    setRiders(prev => prev.map(r => {
+      if (r.id === id) {
+        const isDeact = r.accountStatus === 'Deactivated' || r.accountStatus === 'Suspended';
+        return { ...r, accountStatus: isDeact ? 'Active' : 'Deactivated' };
+      }
+      return r;
+    }));
+  };
+
+  const editRider = async (id, updatedData) => {
+    try {
+      await riderApi.updateRider(id, updatedData);
+    } catch (e) {
+      console.warn('Backend updateRider notice:', e.message);
+    }
+    setRiders(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+    return { success: true };
+  };
+
+  const deleteRider = async (id) => {
+    try {
+      await riderApi.deleteRider(id);
+    } catch (e) {
+      console.warn('Backend deleteRider notice:', e.message);
+    }
+    setRiders(prev => prev.filter(r => r.id !== id));
+    return { success: true };
+  };
+
+  const [payoutsSummary, setPayoutsSummary] = useState([]);
+  const fetchPayouts = async () => {
+    try {
+      const res = await riderApi.getPayoutsSummary();
+      if (res && res.data) {
+        setPayoutsSummary(res.data);
+      }
+    } catch (e) {
+      console.warn('Backend getPayoutsSummary notice:', e.message);
+    }
+  };
+
+  const markRiderPaidFromApi = async (riderId, paymentData) => {
+    try {
+      await riderApi.markRiderPaid(riderId, paymentData);
+      await fetchPayouts();
+    } catch (e) {
+      console.warn('Backend markRiderPaid notice:', e.message);
+    }
+    setPayments(prev => [
+      {
+        id: `PAY-${Date.now()}`,
+        riderId,
+        riderName: paymentData.riderName || 'Rider',
+        amount: `ETB ${paymentData.amount}`,
+        amountNum: Number(paymentData.amount) || 0,
+        status: 'Paid',
+        totalDeliveries: paymentData.totalDeliveries || 1,
+        period: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        paymentMethod: paymentData.paymentMethod || 'Telebirr',
+        referenceNumber: paymentData.reference || `REF-${Date.now()}`
+      },
+      ...prev
+    ]);
+  };
+
   const toggleRiderOnline = (id) => {
     setRiders(prev => prev.map(r => r.id === id ? { ...r, status: r.status === 'Online' ? 'Offline' : 'Online' } : r));
   };
@@ -678,6 +749,12 @@ export const DeliveryProvider = ({ children }) => {
       toggleCustomerStatus,
       addRider,
       approveRider,
+      editRider,
+      deleteRider,
+      toggleRiderDeactivation,
+      payoutsSummary,
+      fetchPayouts,
+      markRiderPaidFromApi,
       toggleRiderOnline,
       toggleRiderActive,
       assignRider,

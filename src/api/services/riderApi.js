@@ -41,4 +41,34 @@ export const riderApi = {
     const res = await apiClient.patch(`/admin/riders/${id}/status`, { status });
     return res.data;
   },
+
+  // Toggle Rider Deactivation (Active <-> Inactive / Deactivated)
+  toggleDeactivation: async (id) => {
+    const res = await apiClient.patch(`/admin/riders/${id}/deactivate`);
+    return res.data;
+  },
+
+  // Soft Delete Rider Account (preserves delivery history)
+  deleteRider: async (id) => {
+    const res = await apiClient.delete(`/admin/riders/${id}`);
+    return res.data;
+  },
+
+  // Get Rider Payouts Summary across all riders
+  getPayoutsSummary: async () => {
+    const res = await apiClient.get('/admin/riders/payouts');
+    return res.data;
+  },
+
+  // Get Single Rider Payout & Delivery History
+  getRiderPayoutHistory: async (id) => {
+    const res = await apiClient.get(`/admin/riders/${id}/payouts`);
+    return res.data;
+  },
+
+  // Mark Rider as Paid
+  markRiderPaid: async (id, paymentData) => {
+    const res = await apiClient.post(`/admin/riders/${id}/pay`, paymentData);
+    return res.data;
+  },
 };

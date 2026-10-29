@@ -91,7 +91,7 @@ export const HotelDetails = () => {
           className="mt-4 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Hotels & Restaurants</span>
+          <span>Back to Partner Management</span>
         </button>
       </div>
     );

@@ -15,7 +15,6 @@ export const Customers = () => {
     return customers.filter(c => 
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.phone.includes(searchQuery) ||
-      c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.id.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [customers, searchQuery]);
@@ -65,7 +64,6 @@ export const Customers = () => {
                 <th className="px-6 py-3.5">ID</th>
                 <th className="px-6 py-3.5">Name</th>
                 <th className="px-6 py-3.5">Phone</th>
-                <th className="px-6 py-3.5">Email</th>
                 <th className="px-6 py-3.5">Total Deliveries</th>
                 <th className="px-6 py-3.5">Status</th>
                 <th className="px-6 py-3.5 text-right">Actions</th>
@@ -97,7 +95,6 @@ export const Customers = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-600 font-mono">{customer.phone}</td>
-                  <td className="px-6 py-4 text-slate-500">{customer.email}</td>
                   <td className="px-6 py-4 font-bold text-slate-900">{customer.totalDeliveries}</td>
                   <td className="px-6 py-4">
                     <button onClick={() => toggleCustomerStatus(customer.id)} title="Click to toggle status">

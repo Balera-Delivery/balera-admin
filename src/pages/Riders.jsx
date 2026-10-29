@@ -1,17 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Eye, Trash2, Power, Bike, CheckCircle2, AlertTriangle, ShieldCheck, UserCheck } from 'lucide-react';
+import { Plus, Search, Eye, Edit2, Trash2, Power, Bike, CheckCircle2, AlertTriangle, ShieldCheck, UserCheck } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { AddRiderModal } from '../components/modals/AddRiderModal';
+import { EditRiderModal } from '../components/modals/EditRiderModal';
 import { useDelivery } from '../context/DeliveryContext';
 import { useNotifications } from '../context/NotificationContext';
 
 export const Riders = () => {
-  const { riders, toggleRiderOnline, toggleRiderActive, approveRider } = useDelivery();
+  const { riders, toggleRiderOnline, toggleRiderActive, toggleRiderDeactivation, deleteRider, approveRider } = useDelivery();
   const { addNotification } = useNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedRiderForEdit, setSelectedRiderForEdit] = useState(null);
   const navigate = useNavigate();
 
   // Pending approval count
@@ -257,13 +260,45 @@ export const Riders = () => {
 
                     {/* Actions */}
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => navigate(`/riders/${rider.id}`)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                           title="View Rider Profile & Deliveries"
                         >
                           <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedRiderForEdit(rider);
+                            setIsEditModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                          title="Edit Rider Information"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => toggleRiderDeactivation(rider.id)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            isActive
+                              ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                              : 'text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50'
+                          }`}
+                          title={isActive ? "Deactivate Rider (Suspend)" : "Activate Rider"}
+                        >
+                          <Power className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Remove rider ${rider.name}? Rider account will be removed while delivery history is preserved.`)) {
+                              deleteRider(rider.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Remove Rider (Preserves History)"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -303,6 +338,16 @@ export const Riders = () => {
       <AddRiderModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+      />
+
+      {/* Edit Rider Modal */}
+      <EditRiderModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedRiderForEdit(null);
+        }}
+        rider={selectedRiderForEdit}
       />
     </div>
   );

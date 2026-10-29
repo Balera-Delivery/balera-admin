@@ -187,7 +187,7 @@ export const Settings = () => {
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">ETB</span>
                   <input
                     type="number"
-                    value={formData.defaultDeliveryFee}
+                    value={formData.defaultDeliveryFee || 100}
                     onChange={(e) => setFormData({ ...formData, defaultDeliveryFee: Number(e.target.value) })}
                     className="w-full pl-12 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-900"
                   />
@@ -197,7 +197,7 @@ export const Settings = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">System Currency</label>
                 <select
-                  value={formData.currency}
+                  value={formData.currency || 'ETB - Ethiopian Birr'}
                   onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-semibold text-slate-900"
                 >
@@ -207,14 +207,72 @@ export const Settings = () => {
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-              <p className="font-bold text-slate-800">Supported Payout Channels for Riders:</p>
-              <p>• Telebirr (Ethio Telecom)</p>
-              <p>• Commercial Bank of Ethiopia (CBE / CBE Birr)</p>
-              <p>• Direct Bank Transfer</p>
+            {/* Platform Settlement & Payout Credentials Section */}
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">
+                Admin & Rider Settlement Credentials
+              </h3>
+              <p className="text-[11px] text-slate-400 mb-4">
+                Bank account and mobile payment phone numbers used for courier payout settlements and customer bank transfers.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Primary Settlement Bank</label>
+                  <select
+                    value={formData.settlementBankName || 'Commercial Bank of Ethiopia (CBE)'}
+                    onChange={(e) => setFormData({ ...formData, settlementBankName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-semibold text-slate-900"
+                  >
+                    <option value="Commercial Bank of Ethiopia (CBE)">Commercial Bank of Ethiopia (CBE)</option>
+                    <option value="Awash Bank">Awash Bank</option>
+                    <option value="Bank of Abyssinia (BOA)">Bank of Abyssinia (BOA)</option>
+                    <option value="Dashen Bank">Dashen Bank</option>
+                    <option value="Cooperative Bank of Oromia">Cooperative Bank of Oromia</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Bank Account Number</label>
+                  <input
+                    type="text"
+                    value={formData.settlementAccountNumber || '1000189372648'}
+                    onChange={(e) => setFormData({ ...formData, settlementAccountNumber: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-mono text-slate-900 font-semibold"
+                    placeholder="e.g. 1000123456789"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Account Beneficiary Name</label>
+                  <input
+                    type="text"
+                    value={formData.settlementAccountName || 'Balera Delivery Services PLC'}
+                    onChange={(e) => setFormData({ ...formData, settlementAccountName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none text-slate-900 font-semibold"
+                    placeholder="e.g. Balera Delivery Services PLC"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Telebirr / Mobile Money Phone Number</label>
+                  <input
+                    type="text"
+                    value={formData.settlementTelebirrPhone || '+251 911 223 344'}
+                    onChange={(e) => setFormData({ ...formData, settlementTelebirrPhone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-mono text-slate-900 font-semibold"
+                    placeholder="+251 911 000 000"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              {savedSuccess && (
+                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                  <Check className="w-4 h-4" /> Payment credentials saved!
+                </span>
+              )}
               <button
                 type="submit"
                 className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-sm shadow-brand-500/25 transition-all"
@@ -227,34 +285,93 @@ export const Settings = () => {
 
         {/* Notifications Tab */}
         {activeTab === 'Notifications' && (
-          <div className="space-y-6">
+          <form onSubmit={handleSave} className="space-y-6">
+            {/* Resend Integration Block */}
+            <div className="p-5 bg-gradient-to-br from-slate-50 to-indigo-50/40 border border-slate-200 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Mail className="w-5 h-5 text-brand-600" />
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Resend Email Alerts Integration
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Sends automated email notifications for delivery milestones, rider assignments, and payout receipts.
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Resend Connected
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Resend API Key</label>
+                  <input
+                    type="password"
+                    value={formData.resendApiKey || 're_balera_live_pk_748293'}
+                    onChange={(e) => setFormData({ ...formData, resendApiKey: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-mono"
+                    placeholder="re_xxxxxxxxxxxxxxxxx"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Sender Email Address</label>
+                  <input
+                    type="email"
+                    value={formData.resendSenderEmail || 'orders@baleradelivery.com'}
+                    onChange={(e) => setFormData({ ...formData, resendSenderEmail: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-mono"
+                    placeholder="notifications@baleradelivery.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Notification Triggers */}
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">System Notification Triggers</h3>
-            <div className="space-y-4 text-xs">
-              <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+            <div className="space-y-3 text-xs">
+              <label className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition-colors">
                 <div>
                   <span className="font-bold text-slate-900 block">Push Notifications for New Delivery Requests</span>
-                  <span className="text-slate-500">Alert admin instantly when a customer submits a request</span>
+                  <span className="text-slate-500 text-[11px]">Alert admin instantly when a customer submits a request</span>
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600" />
+                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600 rounded" />
               </label>
 
-              <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+              <label className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition-colors">
                 <div>
-                  <span className="font-bold text-slate-900 block">Rider Acceptance & Rejection Alerts</span>
-                  <span className="text-slate-500">Notify admin immediately if a rider rejects so re-assignment can occur</span>
+                  <span className="font-bold text-slate-900 block">Rider Acceptance & Reassignment Alerts</span>
+                  <span className="text-slate-500 text-[11px]">Notify admin immediately if a rider rejects so re-assignment can occur</span>
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600" />
+                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600 rounded" />
               </label>
 
-              <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+              <label className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition-colors">
                 <div>
-                  <span className="font-bold text-slate-900 block">OTP Verification SMS Delivery</span>
-                  <span className="text-slate-500">Send secure 4-digit OTP code to the recipient upon delivery pickup</span>
+                  <span className="font-bold text-slate-900 block">Dual QR & OTP Verification SMS/Push Handover</span>
+                  <span className="text-slate-500 text-[11px]">Send customer handover code & QR link upon delivery pickup</span>
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600" />
+                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600 rounded" />
               </label>
             </div>
-          </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              {savedSuccess && (
+                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                  <Check className="w-4 h-4" /> Notification settings saved!
+                </span>
+              )}
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-sm shadow-brand-500/25 transition-all"
+              >
+                Save Notification Settings
+              </button>
+            </div>
+          </form>
         )}
 
         {/* Security Tab */}

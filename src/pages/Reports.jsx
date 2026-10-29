@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Download, TrendingUp, CheckCircle, XCircle, Clock, ChevronDown, RefreshCw } from 'lucide-react';
+import { Calendar, Download, TrendingUp, CheckCircle, XCircle, Clock, ChevronDown, RefreshCw, FileSpreadsheet, FileText, Printer, Filter } from 'lucide-react';
 import { StatCard } from '../components/common/StatCard';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { DeliveriesLineChart } from '../components/charts/DeliveriesLineChart';
 import { StatusDonutChart } from '../components/charts/StatusDonutChart';
 import { useDelivery } from '../context/DeliveryContext';
@@ -12,6 +13,7 @@ export const Reports = () => {
   const [dateRange, setDateRange] = useState('Active Operations');
   const [reportData, setReportData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedStatusTab, setSelectedStatusTab] = useState('ALL'); // 'ALL' | 'COMPLETED' | 'IN_PROGRESS' | 'PENDING' | 'CANCELLED'
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -108,7 +110,6 @@ export const Reports = () => {
     if (reportData?.dailyDeliveries && Array.isArray(reportData.dailyDeliveries) && reportData.dailyDeliveries.length > 0) {
       return reportData.dailyDeliveries;
     }
-    // Group deliveries by weekday / day
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const counts = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
     deliveries.forEach(d => {
@@ -123,30 +124,147 @@ export const Reports = () => {
     }));
   }, [deliveries, reportData]);
 
-  const handleExport = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + ["Tracking ID,Customer,Rider,Status,Amount,Pickup,Destination"]
-        .concat(deliveries.map(d => `"${d.id}","${d.customerName}","${d.riderName}","${d.status}","${d.amount}","${d.pickupLocation}","${d.destination}"`))
-        .join("\n");
-    const encodedUri = encodeURI(csvContent);
+  // Filtered deliveries based on active tab
+  const filteredDeliveries = useMemo(() => {
+    switch (selectedStatusTab) {
+      case 'COMPLETED':
+        return deliveries.filter(d => d.status === 'Completed');
+      case 'IN_PROGRESS':
+        return deliveries.filter(d => ['Assigned', 'Accepted', 'Picked Up', 'On the Way', 'Delivered'].includes(d.status));
+      case 'PENDING':
+        return deliveries.filter(d => d.status === 'Pending');
+      case 'CANCELLED':
+        return deliveries.filter(d => d.status === 'Cancelled');
+      default:
+        return deliveries;
+    }
+  }, [deliveries, selectedStatusTab]);
+
+  // 1. Export CSV
+  const handleExportCSV = () => {
+    const headers = ["Order ID", "Customer", "Rider", "Pickup Location", "Destination", "Amount", "Status", "Date"];
+    const rows = filteredDeliveries.map(d => [
+      `"${d.id}"`,
+      `"${d.customerName}"`,
+      `"${d.riderName || 'Unassigned'}"`,
+      `"${d.pickupLocation || ''}"`,
+      `"${d.destination || ''}"`,
+      `"${d.amount || ''}"`,
+      `"${d.status || ''}"`,
+      `"${d.date || d.time || new Date().toISOString().slice(0, 10)}"`
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `balera-delivery-report-${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
+    link.href = url;
+    link.download = `balera-delivery-report-${selectedStatusTab.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
-    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // 2. Export Excel (.xls)
+  const handleExportExcel = () => {
+    const tableHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head><meta charset="utf-8"/><title>Balera Delivery Report</title></head>
+      <body>
+        <table border="1">
+          <thead>
+            <tr style="background-color: #1B59F8; color: #FFFFFF; font-weight: bold;">
+              <th>Order ID</th><th>Customer</th><th>Rider</th><th>Pickup Location</th><th>Destination</th><th>Amount</th><th>Status</th><th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredDeliveries.map(d => `
+              <tr>
+                <td>${d.id}</td>
+                <td>${d.customerName}</td>
+                <td>${d.riderName || 'Unassigned'}</td>
+                <td>${d.pickupLocation || ''}</td>
+                <td>${d.destination || ''}</td>
+                <td>${d.amount || ''}</td>
+                <td>${d.status || ''}</td>
+                <td>${d.date || d.time || ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `balera-delivery-report-${selectedStatusTab.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 3. Export PDF (Print View)
+  const handleExportPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Balera Delivery Report - ${selectedStatusTab}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 28px; color: #0f172a; margin: 0; }
+            h1 { color: #1B59F8; margin-bottom: 4px; font-size: 20px; font-weight: 800; }
+            .meta { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th { background-color: #f8fafc; color: #475569; font-weight: 700; text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; font-size: 10px; }
+            td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+            .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 10px; background: #e0f2fe; color: #0369a1; }
+            .footer { margin-top: 24px; font-size: 10px; color: #94a3b8; text-align: right; }
+          </style>
+        </head>
+        <body>
+          <h1>Balera Delivery — Operational Orders Report</h1>
+          <div class="meta">Filter Category: <strong>${selectedStatusTab}</strong> | Generated: ${new Date().toLocaleString()} | Total Orders: ${filteredDeliveries.length}</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th><th>Customer</th><th>Rider</th><th>Pickup Location</th><th>Destination</th><th>Amount</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredDeliveries.map(d => `
+                <tr>
+                  <td><strong>${d.id}</strong></td>
+                  <td>${d.customerName}</td>
+                  <td>${d.riderName || 'Unassigned'}</td>
+                  <td>${d.pickupLocation || 'Bale Central Hub'}</td>
+                  <td>${d.destination || 'Customer Address'}</td>
+                  <td>${d.amount}</td>
+                  <td><span class="badge">${d.status}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="footer">Balera Delivery Platform • Official Operations Ledger</div>
+          <script>window.onload = function() { window.print(); }<\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header & Date Range Picker */}
+      {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Reports</h2>
-          <p className="text-xs font-medium text-slate-400 mt-0.5">Delivery performance reports and business intelligence</p>
+          <h2 className="text-xl font-bold text-slate-900">Reports & Analytics</h2>
+          <p className="text-xs font-medium text-slate-400 mt-0.5">
+            Operational delivery records, business intelligence, and multi-format exports
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Period Selector */}
           <select
             value={period}
@@ -159,17 +277,34 @@ export const Reports = () => {
             <option value="monthly">Monthly</option>
           </select>
 
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm">
-            <Calendar className="w-4 h-4 text-brand-600" />
-            <span>{dateRange}</span>
-          </div>
-
+          {/* Export CSV */}
           <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-sm transition-all"
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-sm transition-all"
+            title="Download CSV spreadsheet"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
+            <Download className="w-3.5 h-3.5 text-brand-600" />
+            <span>CSV</span>
+          </button>
+
+          {/* Export Excel */}
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-emerald-700 rounded-xl text-xs font-bold shadow-sm transition-all"
+            title="Download Excel .xls spreadsheet"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Excel</span>
+          </button>
+
+          {/* Export PDF */}
+          <button
+            onClick={handleExportPDF}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-rose-700 rounded-xl text-xs font-bold shadow-sm transition-all"
+            title="Print or Save PDF report"
+          >
+            <Printer className="w-3.5 h-3.5 text-rose-600" />
+            <span>PDF</span>
           </button>
         </div>
       </div>
@@ -218,6 +353,111 @@ export const Reports = () => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* SECTION: DELIVERIES BREAKDOWN BY STATUS TABS */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+        {/* Filter Tabs Header */}
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto">
+            <button
+              onClick={() => setSelectedStatusTab('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                selectedStatusTab === 'ALL' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              All ({deliveries.length})
+            </button>
+            <button
+              onClick={() => setSelectedStatusTab('COMPLETED')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                selectedStatusTab === 'COMPLETED' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Completed ({completedCount})
+            </button>
+            <button
+              onClick={() => setSelectedStatusTab('IN_PROGRESS')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                selectedStatusTab === 'IN_PROGRESS' ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              In Progress ({inProgressCount})
+            </button>
+            <button
+              onClick={() => setSelectedStatusTab('PENDING')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                selectedStatusTab === 'PENDING' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Pending ({pendingCount})
+            </button>
+            <button
+              onClick={() => setSelectedStatusTab('CANCELLED')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                selectedStatusTab === 'CANCELLED' ? 'bg-white text-rose-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Cancelled ({cancelledCount})
+            </button>
+          </div>
+
+          <span className="text-xs font-semibold text-slate-400">
+            Showing <strong className="text-slate-800">{filteredDeliveries.length}</strong> orders
+          </span>
+        </div>
+
+        {/* Deliveries Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50/75 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-3.5">Order ID</th>
+                <th className="px-6 py-3.5">Customer</th>
+                <th className="px-6 py-3.5">Rider</th>
+                <th className="px-6 py-3.5">Pickup Location</th>
+                <th className="px-6 py-3.5">Destination</th>
+                <th className="px-6 py-3.5">Amount</th>
+                <th className="px-6 py-3.5">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+              {filteredDeliveries.map((delivery) => (
+                <tr key={delivery.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="px-6 py-3.5 font-bold text-brand-600 font-mono">
+                    {delivery.id}
+                  </td>
+                  <td className="px-6 py-3.5 font-bold text-slate-900">
+                    {delivery.customerName}
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-700">
+                    {delivery.riderName || <span className="text-slate-400 italic">Unassigned</span>}
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-600 max-w-[180px] truncate">
+                    {delivery.pickupLocation}
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-600 max-w-[180px] truncate">
+                    {delivery.destination}
+                  </td>
+                  <td className="px-6 py-3.5 font-bold font-mono text-slate-900">
+                    {delivery.amount}
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <StatusBadge status={delivery.status} />
+                  </td>
+                </tr>
+              ))}
+
+              {filteredDeliveries.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="px-6 py-10 text-center text-slate-400 text-xs font-semibold">
+                    No delivery records match the "{selectedStatusTab}" status tab.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

@@ -24,7 +24,7 @@ export const Sidebar = () => {
 
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { label: 'Hotels & Restaurants', path: '/hotels', icon: UtensilsCrossed },
+    { label: 'Partner Management', path: '/hotels', icon: UtensilsCrossed },
     { label: 'Customers', path: '/customers', icon: Users },
     { label: 'Riders', path: '/riders', icon: Bike },
     { label: 'Delivery Requests', path: '/deliveries', icon: Package },

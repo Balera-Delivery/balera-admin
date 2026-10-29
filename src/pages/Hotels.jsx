@@ -130,13 +130,13 @@ export const Hotels = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-slate-900">Hotels & Restaurants</h2>
+            <h2 className="text-xl font-bold text-slate-900">Partner Management</h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-brand-50 text-brand-700 border border-brand-200/60">
               {stats.totalHotels} Partners
             </span>
           </div>
           <p className="text-xs font-medium text-slate-400 mt-0.5">
-            Manage partner food establishments, complete food menus, pricing, and contact phone numbers
+            Manage partner food establishments, product catalogs, pricing, and contact phone numbers
           </p>
         </div>
 
@@ -226,7 +226,7 @@ export const Hotels = () => {
           }`}
         >
           <Building2 className="w-4 h-4" />
-          <span>Hotels & Restaurants Directory ({hotels.length})</span>
+          <span>Partner Directory ({hotels.length})</span>
         </button>
 
         <button
@@ -238,7 +238,7 @@ export const Hotels = () => {
           }`}
         >
           <UtensilsCrossed className="w-4 h-4" />
-          <span>Master Food Menu Explorer ({stats.totalFoods} Dishes)</span>
+          <span>Product Explorer ({stats.totalFoods} Dishes)</span>
         </button>
       </div>
 
