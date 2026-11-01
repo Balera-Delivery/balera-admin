@@ -50,4 +50,11 @@ export const deliveryApi = {
     const res = await apiClient.patch(`/admin/deliveries/${cleanId}/payment-status`, { paymentStatus });
     return res.data;
   },
+
+  // Update Delivery Status (Admin / Support Override)
+  updateDeliveryStatus: async (deliveryId, status, notes = '') => {
+    const cleanId = String(deliveryId).replace('#', '');
+    const res = await apiClient.patch(`/admin/deliveries/${cleanId}/status`, { status, notes });
+    return res.data;
+  },
 };

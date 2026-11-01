@@ -673,13 +673,24 @@ export const DeliveryProvider = ({ children }) => {
     setTimeout(syncWithBackend, 500);
   };
 
-  const changeDeliveryStatus = (deliveryId, newStatus) => {
+  const changeDeliveryStatus = async (deliveryId, newStatus, notes = '') => {
+    // 1. Optimistic local state update
     setDeliveries(prev => prev.map(d => {
       if (d.id === deliveryId || d.backendId === deliveryId) {
         return { ...d, status: newStatus };
       }
       return d;
     }));
+
+    // 2. Persist to backend and notify rider + customer apps
+    try {
+      await deliveryApi.updateDeliveryStatus(deliveryId, newStatus, notes);
+    } catch (e) {
+      console.warn('Backend updateDeliveryStatus notice:', e.message);
+    }
+
+    // 3. Resync fresh data from backend
+    setTimeout(syncWithBackend, 500);
   };
 
   // Payments
