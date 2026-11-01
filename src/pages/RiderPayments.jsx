@@ -243,7 +243,7 @@ export const RiderPayments = () => {
                       {payment.amount}
                     </td>
                     <td className="px-6 py-4 text-slate-600">
-                      {payment.period || 'May 2024'}
+                      {payment.period || new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={payment.status} />

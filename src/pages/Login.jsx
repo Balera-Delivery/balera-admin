@@ -94,7 +94,7 @@ export const Login = () => {
 
         {/* Footer info */}
         <div className="text-center text-[11px] text-slate-400 font-medium z-10">
-          <p>© 2024 Balerra Delivery. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Balera Delivery. All rights reserved.</p>
         </div>
       </div>
 

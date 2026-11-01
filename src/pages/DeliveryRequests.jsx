@@ -11,7 +11,9 @@ export const DeliveryRequests = () => {
   
   const { deliveries } = useDelivery();
   const [statusFilter, setStatusFilter] = useState('All Status');
-  const [dateFilter, setDateFilter] = useState('May 10, 2024');
+  const [dateFilter, setDateFilter] = useState(() =>
+    new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  );
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedDeliveryToAssign, setSelectedDeliveryToAssign] = useState(null);
 

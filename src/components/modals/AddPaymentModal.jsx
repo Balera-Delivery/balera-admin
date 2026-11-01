@@ -8,7 +8,7 @@ export const AddPaymentModal = ({ isOpen, onClose }) => {
     riderId: riders[0]?.id || '',
     totalDeliveries: 50,
     amount: '1,500.00',
-    period: 'May 2024',
+    period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
     paymentMethod: 'Telebirr',
     status: 'Paid'
   });

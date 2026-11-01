@@ -689,7 +689,7 @@ export const DeliveryProvider = ({ children }) => {
       id: nextId,
       status: 'Paid',
       paymentDate: 'Today',
-      period: 'May 2024',
+      period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       ...paymentData
     };
     setPayments(prev => [newPayment, ...prev]);
