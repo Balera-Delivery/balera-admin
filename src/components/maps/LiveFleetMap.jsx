@@ -18,25 +18,6 @@ import {
   X
 } from 'lucide-react';
 
-// Tile provider options
-const MAP_THEMES = {
-  voyager: {
-    label: 'Street Pro',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CartoDB &copy; OpenStreetMap'
-  },
-  osm: {
-    label: 'Standard OSM',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors'
-  },
-  dark: {
-    label: 'Dark Mode',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CartoDB &copy; OpenStreetMap'
-  }
-};
-
 // Smooth Camera Controller
 function CameraController({ targetPosition, targetBounds, zoomTrigger }) {
   const map = useMap();
@@ -174,7 +155,6 @@ export const LiveFleetMap = ({
   isFullscreen = false,
   onToggleFullscreen = null
 }) => {
-  const [mapTheme, setMapTheme] = useState('voyager');
   const [targetBounds, setTargetBounds] = useState(null);
   const [targetPosition, setTargetPosition] = useState(null);
   const [zoomTrigger, setZoomTrigger] = useState(0);
@@ -241,21 +221,10 @@ export const LiveFleetMap = ({
 
       {/* Top Map Interactive Controls Bar */}
       <div className="absolute top-3.5 left-3.5 right-3.5 z-[1000] flex items-center justify-between pointer-events-none">
-        {/* Layer Theme Selector */}
-        <div className="pointer-events-auto flex items-center bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl shadow-md p-1 gap-1">
-          {Object.entries(MAP_THEMES).map(([key, theme]) => (
-            <button
-              key={key}
-              onClick={() => setMapTheme(key)}
-              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                mapTheme === key
-                  ? 'bg-brand-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              {theme.label}
-            </button>
-          ))}
+        {/* OpenStreetMap Indicator */}
+        <div className="pointer-events-auto flex items-center bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl shadow-md px-3 py-1.5 gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="text-[11px] font-bold text-slate-700">OpenStreetMap Live Tracking</span>
         </div>
 
         {/* Quick Action Tools */}
@@ -309,8 +278,8 @@ export const LiveFleetMap = ({
           />
 
           <TileLayer
-            attribution={MAP_THEMES[mapTheme].attribution}
-            url={MAP_THEMES[mapTheme].url}
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
           {/* Render Active Deliveries & Couriers */}
