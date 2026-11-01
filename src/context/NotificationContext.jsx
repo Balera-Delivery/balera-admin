@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { initialNotifications } from '../data/mockData';
 import { notificationApi } from '../api/services/notificationApi';
+import { onAdminNotification } from '../services/socket';
 
 const NotificationContext = createContext();
 
@@ -30,6 +31,28 @@ export const NotificationProvider = ({ children }) => {
     };
 
     fetchNotifs();
+
+    // ⚡ Real-Time WebSocket stream for instant admin notification alerts
+    const unsub = onAdminNotification((notif) => {
+      setNotifications((prev) => [
+        {
+          id: notif.id || `NOTIF-${String(Date.now()).slice(-4)}`,
+          title: notif.title ? `${notif.title}: ${notif.message}` : notif.message,
+          time: notif.createdAt
+            ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Just now',
+          date: notif.createdAt
+            ? new Date(notif.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Today',
+          type: notif.userRole === 'RIDER' ? 'rider' : 'system',
+          isRead: false,
+          iconColor: 'text-brand-600 bg-brand-50',
+        },
+        ...prev,
+      ]);
+    });
+
+    return () => unsub();
   }, []);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;

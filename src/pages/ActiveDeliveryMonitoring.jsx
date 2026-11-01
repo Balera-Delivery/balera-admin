@@ -5,14 +5,16 @@ import { StatusBadge } from '../components/common/StatusBadge';
 import { LiveFleetMap } from '../components/maps/LiveFleetMap';
 import { useDelivery } from '../context/DeliveryContext';
 import { dashboardApi } from '../api/services/dashboardApi';
+import { onRiderLocation, onDeliveryUpdate } from '../services/socket';
 
 export const ActiveDeliveryMonitoring = () => {
   const { deliveries, riders, backendStatus } = useDelivery();
   const navigate = useNavigate();
   const [liveFleetData, setLiveFleetData] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isWsConnected, setIsWsConnected] = useState(true);
 
-  // Poll or fetch live map data
+  // Fetch initial live map data
   const fetchLiveFleet = async () => {
     setIsRefreshing(true);
     try {
@@ -29,8 +31,42 @@ export const ActiveDeliveryMonitoring = () => {
 
   useEffect(() => {
     fetchLiveFleet();
-    const interval = setInterval(fetchLiveFleet, 15000); // 15s refresh
-    return () => clearInterval(interval);
+
+    // ⚡ Real-Time WebSocket stream for live rider GPS locations
+    const unsubRider = onRiderLocation((payload) => {
+      setIsWsConnected(true);
+      setLiveFleetData((prev) => {
+        if (!prev) return prev;
+        const currentRiders = prev.riders || [];
+        const index = currentRiders.findIndex((r) => r.id === payload.riderId);
+        if (index >= 0) {
+          const updated = [...currentRiders];
+          updated[index] = {
+            ...updated[index],
+            currentLatitude: payload.latitude,
+            currentLongitude: payload.longitude,
+            heading: payload.heading,
+            lastLocationUpdate: payload.timestamp || new Date().toISOString(),
+          };
+          return { ...prev, riders: updated };
+        }
+        return prev;
+      });
+    });
+
+    // ⚡ Real-Time WebSocket stream for delivery status transitions
+    const unsubDelivery = onDeliveryUpdate(() => {
+      fetchLiveFleet();
+    });
+
+    // Light background sync interval (60 seconds instead of aggressive 15s polling)
+    const interval = setInterval(fetchLiveFleet, 60000);
+
+    return () => {
+      unsubRider();
+      unsubDelivery();
+      clearInterval(interval);
+    };
   }, []);
 
   // Filter deliveries that are currently active in transit
