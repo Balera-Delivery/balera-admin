@@ -8,7 +8,6 @@ import {
   MapPin, 
   Clock, 
   UtensilsCrossed, 
-  Star, 
   Edit3, 
   Trash2, 
   ChevronRight, 
@@ -135,35 +134,33 @@ export const Hotels = () => {
               {stats.totalHotels} Partners
             </span>
           </div>
-          <p className="text-xs font-medium text-slate-400 mt-0.5">
-            Manage partner food establishments, product catalogs, pricing, and contact phone numbers
+          <p className="text-xs text-slate-500 mt-0.5">
+            Manage partner restaurants, product catalogs, and menus
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold shadow-2xs">
-            <Database className={`w-3.5 h-3.5 ${isBackendConnected ? 'text-emerald-500' : 'text-amber-500'}`} />
-            <span className={isBackendConnected ? 'text-emerald-700 font-bold' : 'text-slate-600'}>
-              {isBackendConnected ? 'PostgreSQL Connected' : 'Local / Offline Mode'}
-            </span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium shadow-2xs text-slate-700">
+            <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+            <span>{isBackendConnected ? 'Database Connected' : 'Offline Mode'}</span>
           </div>
 
           <button
             onClick={() => fetchHotels()}
             disabled={isLoading || isSyncing}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-2xs transition-all disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
             title="Refresh & Sync from Database"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading || isSyncing ? 'animate-spin text-brand-600' : ''}`} />
-            <span>{isLoading || isSyncing ? 'Syncing...' : 'Sync DB'}</span>
+            <span>{isLoading || isSyncing ? 'Syncing...' : 'Sync'}</span>
           </button>
 
           <button
             onClick={() => setIsAddHotelOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-brand-500/25 transition-all"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-brand-500/25 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Hotel / Restaurant</span>
+            <span>Add Restaurant</span>
           </button>
         </div>
       </div>
@@ -175,9 +172,9 @@ export const Hotels = () => {
             <Building2 className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Establishments</p>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Partners</p>
             <h3 className="text-lg font-bold text-slate-900 mt-0.5">{stats.totalHotels}</h3>
-            <span className="text-[10px] text-emerald-600 font-semibold">{stats.activeHotels} Active / Serving</span>
+            <span className="text-[10px] text-emerald-600 font-semibold">{stats.activeHotels} Active</span>
           </div>
         </div>
 
@@ -186,9 +183,9 @@ export const Hotels = () => {
             <UtensilsCrossed className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Menu Dishes</p>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Menu Dishes</p>
             <h3 className="text-lg font-bold text-slate-900 mt-0.5">{stats.totalFoods}</h3>
-            <span className="text-[10px] text-emerald-600 font-semibold">{stats.availableFoods} Available in stock</span>
+            <span className="text-[10px] text-emerald-600 font-semibold">{stats.availableFoods} Available</span>
           </div>
         </div>
 
@@ -197,9 +194,8 @@ export const Hotels = () => {
             <DollarSign className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Average Dish Price</p>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Average Price</p>
             <h3 className="text-lg font-bold text-slate-900 mt-0.5">{stats.averageFoodPrice} <span className="text-xs font-medium text-slate-400">ETB</span></h3>
-            <span className="text-[10px] text-slate-400">Across all restaurants</span>
           </div>
         </div>
 
@@ -208,9 +204,8 @@ export const Hotels = () => {
             <AlertCircle className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Out of Stock Dishes</p>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Out of Stock</p>
             <h3 className="text-lg font-bold text-slate-900 mt-0.5">{stats.outOfStockFoods}</h3>
-            <span className="text-[10px] text-slate-400">Items disabled</span>
           </div>
         </div>
       </div>
@@ -350,7 +345,7 @@ export const Hotels = () => {
                       alt={hotel.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></div>
 
                     {/* Status Badge */}
                     <div className="absolute top-3 left-3 flex items-center gap-1.5">
@@ -368,13 +363,7 @@ export const Hotels = () => {
                       </span>
                     </div>
 
-                    {/* Rating Chip */}
-                    <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold bg-amber-400 text-slate-900 shadow-sm">
-                      <Star className="w-3 h-3 fill-slate-900" />
-                      <span>{hotel.rating}</span>
-                    </div>
-
-                    {/* Establishment Name & Cuisine Type on Banner */}
+                    {/* Establishment Name on Banner */}
                     <div className="absolute bottom-3 left-3 right-3 text-white">
                       <h3
                         onClick={() => navigate(`/hotels/${hotel.id}`)}
@@ -382,12 +371,12 @@ export const Hotels = () => {
                       >
                         {hotel.name}
                       </h3>
-                      <p className="text-[11px] text-slate-200 truncate">{hotel.cuisineType || hotel.category}</p>
+                      <p className="text-[11px] text-slate-200 truncate">{hotel.cuisineType || hotel.address}</p>
                     </div>
                   </div>
 
                   {/* Body Content */}
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3.5">
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                     {/* Address & Hours */}
                     <div className="space-y-1.5 text-xs text-slate-600">
                       <div className="flex items-center gap-2 truncate">
@@ -400,68 +389,38 @@ export const Hotels = () => {
                       </div>
                     </div>
 
-                    {/* Phone Numbers Section (Up to 2 Phones) */}
-                    <div className="p-2.5 bg-slate-50 border border-slate-200/70 rounded-xl space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                          <Phone className="w-3 h-3 text-brand-600" />
-                          Phone Contact
+                    {/* Clean Phone Contacts Row */}
+                    <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-2 truncate">
+                        <Phone className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                        <span className="font-mono font-medium text-slate-800 truncate text-[11px]">
+                          {hotel.phone1 || hotel.phone2 || 'No phone added'}
                         </span>
-                        <button
-                          onClick={() => setEditingPhonesHotel(hotel)}
-                          className="text-[10px] text-brand-600 hover:text-brand-700 font-bold hover:underline"
-                        >
-                          Edit Phones
-                        </button>
+                        {hotel.phone1 && hotel.phone2 && (
+                          <span className="text-[10px] text-slate-400 font-mono">/ {hotel.phone2}</span>
+                        )}
                       </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div className="truncate">
-                          <span className="text-[10px] text-slate-400 block">Phone 1:</span>
-                          {hotel.phone1 ? (
-                            <span className="font-mono font-semibold text-slate-800">{hotel.phone1}</span>
-                          ) : (
-                            <button
-                              onClick={() => setEditingPhonesHotel(hotel)}
-                              className="text-slate-400 hover:text-brand-600 italic text-[10px]"
-                            >
-                              + Add Phone 1
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="truncate">
-                          <span className="text-[10px] text-slate-400 block">Phone 2:</span>
-                          {hotel.phone2 ? (
-                            <span className="font-mono font-semibold text-slate-800">{hotel.phone2}</span>
-                          ) : (
-                            <button
-                              onClick={() => setEditingPhonesHotel(hotel)}
-                              className="text-slate-400 hover:text-brand-600 italic text-[10px]"
-                            >
-                              + Add Phone 2
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      <button
+                        onClick={() => setEditingPhonesHotel(hotel)}
+                        className="text-[11px] text-brand-600 hover:text-brand-700 font-semibold shrink-0 cursor-pointer"
+                      >
+                        Edit
+                      </button>
                     </div>
 
-                    {/* Menu Dishes Count & Category Chip */}
+                    {/* Menu Dishes Count */}
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                      <div className="flex items-center gap-1.5 font-bold text-brand-600">
-                        <UtensilsCrossed className="w-3.5 h-3.5" />
-                        <span>{(hotel.foods || []).length} Food Dishes</span>
+                      <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                        <UtensilsCrossed className="w-3.5 h-3.5 text-brand-600" />
+                        <span>{(hotel.foods || []).length} Menu Dishes</span>
                       </div>
-                      <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                        {hotel.category}
-                      </span>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="grid grid-cols-4 gap-1.5 pt-2">
+                    <div className="grid grid-cols-4 gap-2 pt-1">
                       <button
                         onClick={() => navigate(`/hotels/${hotel.id}`)}
-                        className="col-span-2 py-2 px-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1 shadow-xs"
+                        className="col-span-2 py-2 px-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                       >
                         <span>Manage Menu</span>
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -469,17 +428,17 @@ export const Hotels = () => {
 
                       <button
                         onClick={() => setEditingHotel(hotel)}
-                        className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1"
-                        title="Edit Hotel Profile"
+                        className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        title="Edit Partner Profile"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Edit</span>
+                        <span>Edit</span>
                       </button>
 
                       <button
                         onClick={() => setDeletingHotel(hotel)}
-                        className="py-2 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center"
-                        title="Delete Establishment"
+                        className="py-2 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer"
+                        title="Delete Partner"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
