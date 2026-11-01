@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronRight, Phone, Mail, Bike, Shield, Calendar, Star, CheckCircle, XCircle, KeyRound, Check } from 'lucide-react';
+import { ChevronRight, Phone, Mail, Bike, Shield, Calendar, CheckCircle, XCircle, KeyRound, Check } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { useDelivery } from '../context/DeliveryContext';
 
@@ -112,16 +112,9 @@ export const RiderDetails = () => {
               <span className="text-slate-500 font-medium">Completed</span>
               <span className="text-sm font-bold text-emerald-600">{rider.completedDeliveries}</span>
             </div>
-            <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+            <div className="flex items-center justify-between pt-1.5">
               <span className="text-slate-500 font-medium">Cancelled</span>
               <span className="text-sm font-bold text-rose-600">{rider.cancelledDeliveries}</span>
-            </div>
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-slate-500 font-medium">Rating</span>
-              <span className="text-sm font-bold text-amber-500 flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 fill-amber-400" />
-                {rider.rating}
-              </span>
             </div>
           </div>
         </div>

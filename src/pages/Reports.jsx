@@ -477,7 +477,7 @@ export const Reports = () => {
                 <th className="px-6 py-3.5">Total Trips</th>
                 <th className="px-6 py-3.5">Completed</th>
                 <th className="px-6 py-3.5">Success Rate</th>
-                <th className="px-6 py-3.5">Rating</th>
+                <th className="px-6 py-3.5">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -495,7 +495,11 @@ export const Reports = () => {
                       {Math.round((r.completedDeliveries / (r.totalDeliveries || 1)) * 100)}%
                     </span>
                   </td>
-                  <td className="px-6 py-3.5 text-amber-500 font-bold">{r.rating} ★</td>
+                  <td className="px-6 py-3.5">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                      {r.status || 'Active'}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

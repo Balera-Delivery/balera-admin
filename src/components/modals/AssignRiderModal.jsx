@@ -142,7 +142,6 @@ export const AssignRiderModal = ({ isOpen, onClose, delivery }) => {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-xs font-bold text-slate-900">{rider.name}</p>
-                        <span className="text-[10px] text-slate-400">({rider.rating} ★)</span>
                       </div>
                       <p className="text-[11px] text-slate-500">{rider.vehicle} • {rider.phone}</p>
                       {distanceKm !== undefined && (

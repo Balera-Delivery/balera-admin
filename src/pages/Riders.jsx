@@ -189,7 +189,7 @@ export const Riders = () => {
                         </div>
                         <div>
                           <span className="font-bold text-slate-900 block">{rider.name}</span>
-                          <span className="text-[10px] text-slate-400">ID: {rider.id} • {rider.rating} ★</span>
+                          <span className="text-[10px] text-slate-400">ID: {rider.id}</span>
                         </div>
                       </div>
                     </td>
