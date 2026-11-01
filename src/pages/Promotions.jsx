@@ -30,9 +30,15 @@ export const Promotions = () => {
   const [promotions, setPromotions] = useState(() => {
     try {
       const saved = localStorage.getItem('balera_promotions_cache');
-      return saved ? JSON.parse(saved) : INITIAL_PROMOTIONS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Filter out legacy mock data if present
+        const realOnly = parsed.filter(p => !['PROMO-001', 'PROMO-002', 'PROMO-003', 'PROMO-004'].includes(p.id));
+        return realOnly;
+      }
+      return [];
     } catch {
-      return INITIAL_PROMOTIONS;
+      return [];
     }
   });
 
@@ -61,11 +67,13 @@ export const Promotions = () => {
     setIsLoading(true);
     try {
       const data = await promotionsApi.getPromotions();
-      if (data && data.length > 0) {
-        setPromotions(data);
+      if (Array.isArray(data)) {
+        // Filter out legacy mock data if present
+        const realOnly = data.filter(p => !['PROMO-001', 'PROMO-002', 'PROMO-003', 'PROMO-004'].includes(p.id));
+        setPromotions(realOnly);
       }
     } catch (e) {
-      console.warn('Using cached promotions');
+      console.warn('Could not load promotions from API:', e);
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +142,7 @@ export const Promotions = () => {
       activeCount,
       totalRedemptions,
       totalDiscountValue,
-      topPromoCode: topPromo?.code || 'WELCOME26'
+      topPromoCode: (topPromo && topPromo.usedCount > 0) ? topPromo.code : '—'
     };
   }, [promotions]);
 
@@ -330,10 +338,21 @@ export const Promotions = () => {
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredPromotions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center text-slate-400">
-                    <Tag className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    <p className="font-semibold text-slate-600">No promotion campaigns found</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Try clearing your filters or create a new campaign</p>
+                  <td colSpan="8" className="px-6 py-16 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                      <Tag className="w-6 h-6" />
+                    </div>
+                    <p className="font-bold text-slate-800 text-sm">No promotion campaigns yet</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Click below to create your first real promo voucher, free delivery campaign, or restaurant partner deal.
+                    </p>
+                    <button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Create Your First Promotion</span>
+                    </button>
                   </td>
                 </tr>
               ) : (

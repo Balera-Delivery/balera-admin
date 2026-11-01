@@ -1,91 +1,10 @@
 import { apiClient } from '../client';
 
-export const INITIAL_PROMOTIONS = [
-  {
-    id: 'PROMO-001',
-    code: 'WELCOME26',
-    title: 'New Customer Welcome Voucher',
-    description: 'Get 20% off your first delivery order across Bale Robe.',
-    promotionType: 'PROMO_CODE',
-    discountType: 'PERCENTAGE',
-    discountValue: 20,
-    maxDiscount: 100,
-    minOrderAmount: 200,
-    totalUsageLimit: 500,
-    usedCount: 142,
-    perUserLimit: 1,
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
-    isActive: true,
-    applicableType: 'ALL',
-    restaurantId: null,
-    restaurant: null
-  },
-  {
-    id: 'PROMO-002',
-    code: 'FREEDELIVERY',
-    title: 'Weekend Free Courier Delivery',
-    description: '100% off standard delivery fee on orders above 300 Birr.',
-    promotionType: 'FREE_DELIVERY',
-    discountType: 'FIXED_AMOUNT',
-    discountValue: 100,
-    maxDiscount: 100,
-    minOrderAmount: 300,
-    totalUsageLimit: 200,
-    usedCount: 88,
-    perUserLimit: 2,
-    startDate: '2026-05-01',
-    endDate: '2026-11-30',
-    isActive: true,
-    applicableType: 'FOOD_ONLY',
-    restaurantId: null,
-    restaurant: null
-  },
-  {
-    id: 'PROMO-003',
-    code: 'KURIFTU15',
-    title: 'Kuriftu Resort Exclusive Dining Discount',
-    description: 'Direct 15% discount for all gourmet meal orders from Kuriftu Resort.',
-    promotionType: 'PARTNER_DISCOUNT',
-    discountType: 'PERCENTAGE',
-    discountValue: 15,
-    maxDiscount: 150,
-    minOrderAmount: 250,
-    totalUsageLimit: 150,
-    usedCount: 64,
-    perUserLimit: 3,
-    startDate: '2026-04-15',
-    endDate: '2026-12-15',
-    isActive: true,
-    applicableType: 'PARTNER_ONLY',
-    restaurantId: 'HTL-001',
-    restaurant: { id: 'HTL-001', name: 'Kuriftu Resort & Spa', code: 'HTL-001' }
-  },
-  {
-    id: 'PROMO-004',
-    code: 'AUTOFEST26',
-    title: 'Holiday Rush Automatic Discount',
-    description: 'Automatic 50 Birr platform discount applied to all orders above 400 Birr.',
-    promotionType: 'PLATFORM_AUTOMATIC',
-    discountType: 'FIXED_AMOUNT',
-    discountValue: 50,
-    maxDiscount: 50,
-    minOrderAmount: 400,
-    totalUsageLimit: 300,
-    usedCount: 215,
-    perUserLimit: 1,
-    startDate: '2026-10-01',
-    endDate: '2026-11-15',
-    isActive: true,
-    applicableType: 'ALL',
-    restaurantId: null,
-    restaurant: null
-  }
-];
+export const INITIAL_PROMOTIONS = [];
 
 export const promotionsApi = {
   /**
-   * Get all promotions
+   * Get all promotions from backend
    */
   getPromotions: async (params = {}) => {
     try {
@@ -93,10 +12,15 @@ export const promotionsApi = {
       if (res.data?.data && Array.isArray(res.data.data)) {
         return res.data.data;
       }
-      return INITIAL_PROMOTIONS;
+      return [];
     } catch (e) {
-      console.warn('Backend /promotions endpoint unavailable, using local campaign cache:', e.message);
-      return INITIAL_PROMOTIONS;
+      console.warn('Backend /promotions endpoint unavailable, using local cache:', e.message);
+      try {
+        const local = localStorage.getItem('balera_promotions_cache');
+        return local ? JSON.parse(local) : [];
+      } catch {
+        return [];
+      }
     }
   },
 
@@ -108,7 +32,13 @@ export const promotionsApi = {
       const res = await apiClient.get(`/promotions/${id}`);
       return res.data?.data;
     } catch (e) {
-      return INITIAL_PROMOTIONS.find(p => p.id === id);
+      try {
+        const local = localStorage.getItem('balera_promotions_cache');
+        const list = local ? JSON.parse(local) : [];
+        return list.find(p => p.id === id);
+      } catch {
+        return null;
+      }
     }
   },
 
@@ -120,7 +50,7 @@ export const promotionsApi = {
       const res = await apiClient.post('/promotions', promoData);
       return res.data?.data;
     } catch (e) {
-      console.warn('Failed to post to backend, returning local promo:', e.message);
+      console.warn('Failed to post to backend, creating in local cache:', e.message);
       return {
         id: `PROMO-${Date.now().toString().slice(-4)}`,
         usedCount: 0,
