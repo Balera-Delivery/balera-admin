@@ -10,6 +10,7 @@ import {
   CreditCard, 
   Bell, 
   UtensilsCrossed,
+  Tag,
   Settings, 
   LogOut,
   PanelLeftClose,
@@ -51,6 +52,7 @@ export const Sidebar = () => {
     { label: 'Active Deliveries', path: '/active-deliveries', icon: Navigation },
     { label: 'Reports', path: '/reports', icon: BarChart3 },
     { label: 'Rider Payments', path: '/payments', icon: CreditCard },
+    { label: 'Promotions', path: '/promotions', icon: Tag },
     { label: 'Notifications', path: '/notifications', icon: Bell, badge: unreadCount },
     { label: 'Settings', path: '/settings', icon: Settings },
   ];

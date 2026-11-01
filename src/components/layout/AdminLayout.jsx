@@ -12,6 +12,7 @@ const routeTitleMap = {
   '/active-deliveries': { title: 'Active Delivery Monitoring', subtitle: 'Real-time tracking of active deliveries' },
   '/reports': { title: 'Reports', subtitle: 'Delivery performance reports' },
   '/payments': { title: 'Rider Payments', subtitle: 'Manage rider monthly payments' },
+  '/promotions': { title: 'Promotions & Discounts', subtitle: 'Manage vouchers, free delivery campaigns, and restaurant deals' },
   '/notifications': { title: 'Notifications', subtitle: 'System Notifications' },
   '/settings': { title: 'Settings', subtitle: 'Configure platform settings and company details' },
 };

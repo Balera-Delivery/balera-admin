@@ -20,6 +20,7 @@ import { DeliveryRequestDetails } from './pages/DeliveryRequestDetails';
 import { ActiveDeliveryMonitoring } from './pages/ActiveDeliveryMonitoring';
 import { Reports } from './pages/Reports';
 import { RiderPayments } from './pages/RiderPayments';
+import { Promotions } from './pages/Promotions';
 import { Notifications } from './pages/Notifications';
 import { Settings } from './pages/Settings';
 
@@ -63,6 +64,9 @@ export default function App() {
 
                   {/* Screen 12: Rider Monthly Payments */}
                   <Route path="/payments" element={<RiderPayments />} />
+
+                  {/* Promotions & Discounts Management */}
+                  <Route path="/promotions" element={<Promotions />} />
 
                   {/* Screen 13: System Notifications */}
                   <Route path="/notifications" element={<Notifications />} />
