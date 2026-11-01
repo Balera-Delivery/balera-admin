@@ -1,15 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { initialHotels } from '../data/hotelData';
+import { initialHotels, BALERA_DEFAULT_BANNER } from '../data/hotelData';
 import { hotelApi } from '../api/services/hotelApi';
 
 const HotelContext = createContext();
 
-const STORAGE_KEY = 'balera_hotels_data_v1';
+const STORAGE_KEY = 'balera_hotels_data_v2';
 
 // Helper to normalize backend restaurant object for frontend UI
 const normalizeHotel = (h) => {
   const hotelId = h.code || h.id;
   const backendId = h.id;
+
+  // Use Balera official cover if missing or if legacy Unsplash placeholder
+  const isLegacyUnsplash = typeof h.banner === 'string' && h.banner.includes('unsplash.com');
+  const banner = !h.banner || isLegacyUnsplash ? BALERA_DEFAULT_BANNER : h.banner;
 
   return {
     id: hotelId,
@@ -32,7 +36,7 @@ const normalizeHotel = (h) => {
     status: h.status || 'Active',
     openingHours: h.openingHours || '07:00 AM - 10:00 PM',
     isPartner: h.isPartner !== undefined ? h.isPartner : true,
-    banner: h.banner || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+    banner: banner,
     avatar: h.avatar || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80',
     foods: Array.isArray(h.foods)
       ? h.foods.map((f) => ({
@@ -144,7 +148,7 @@ export const HotelProvider = ({ children }) => {
       status: hotelData.status || 'Active',
       openingHours: hotelData.openingHours || '07:00 AM - 10:00 PM',
       isPartner: true,
-      banner: hotelData.banner || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+      banner: hotelData.banner || BALERA_DEFAULT_BANNER,
       avatar: hotelData.avatar || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80',
       foods: hotelData.foods || [],
     };

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#081433" />
+      <stop offset="35%" stop-color="#0E2E72" />
+      <stop offset="70%" stop-color="#1B59F8" />
+      <stop offset="100%" stop-color="#0B3C95" />
+    </linearGradient>
+
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0062D2" />
+      <stop offset="50%" stop-color="#1B59F8" />
+      <stop offset="100%" stop-color="#0B3C95" />
+    </linearGradient>
+
+    <linearGradient id="wolfGrad" x1="0%" y1="30%" x2="100%" y2="70%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="40%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+
+    <linearGradient id="accentGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.6" />
+      <stop offset="50%" stop-color="#818CF8" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#38BDF8" stop-opacity="0" />
+    </linearGradient>
+
+    <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <!-- Deep Branded Background -->
+  <rect width="1200" height="500" fill="url(#bgGrad)" />
+  <rect width="1200" height="500" fill="url(#gridPattern)" />
+
+  <!-- Dynamic Speed Geometry -->
+  <path d="M -50 500 L 350 0 L 450 0 L 50 500 Z" fill="#FFFFFF" fill-opacity="0.03" />
+  <path d="M 850 500 L 1250 0 L 1350 0 L 950 500 Z" fill="#FFFFFF" fill-opacity="0.02" />
+  
+  <!-- Glowing Light Ray behind Logo -->
+  <circle cx="600" cy="220" r="280" fill="url(#accentGlow)" filter="blur(60px)" opacity="0.45" />
+
+  <!-- Centered Emblem Container -->
+  <g transform="translate(600, 210)">
+    <!-- Circular Shield Background -->
+    <circle cx="0" cy="0" r="140" fill="#FFFFFF" stroke="#0056B3" stroke-width="8" filter="drop-shadow(0 15px 25px rgba(0,0,0,0.45))" />
+    <circle cx="0" cy="0" r="134" fill="none" stroke="#E0E7FF" stroke-width="2" />
+
+    <!-- Brand Typography inside shield -->
+    <text x="-105" y="-10" font-family="'Plus Jakarta Sans', 'Segoe UI', Arial Black, sans-serif" font-size="38" font-weight="900" font-style="italic" fill="url(#blueGrad)" letter-spacing="1.5">BALERA</text>
+    <text x="-104" y="22" font-family="'Plus Jakarta Sans', 'Segoe UI', Arial Black, sans-serif" font-size="16" font-weight="800" font-style="italic" fill="#0B3C95" letter-spacing="2.8">DELIVERY</text>
+
+    <!-- Speed lines -->
+    <path d="M 0 10 L 45 10 M 8 16 L 38 16 M 15 22 L 42 22" stroke="#0284C7" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Stylized Ethiopian Wolf Crest -->
+    <g transform="translate(38, -55) scale(0.52)">
+      <path d="M 50 40 L 75 -25 L 95 30 Z" fill="#0284C7" />
+      <path d="M 60 30 L 76 -10 L 88 28 Z" fill="#FFFFFF" />
+      <path d="M 85 45 L 120 -15 L 128 40 Z" fill="#1E40AF" />
+      <path d="M 95 35 L 118 0 L 122 35 Z" fill="#93C5FD" />
+      <path d="M 20 65 Q 60 50 100 45 Q 140 40 180 85 L 170 95 Q 130 65 95 70 Q 55 78 20 65 Z" fill="url(#wolfGrad)" />
+      <path d="M 5 95 Q 50 80 105 75 Q 165 72 205 105 L 195 118 Q 145 92 90 98 Q 45 105 5 95 Z" fill="#0284C7" />
+      <path d="M 15 130 Q 65 110 120 108 Q 185 106 215 125 L 205 138 Q 160 125 110 128 Q 55 135 15 130 Z" fill="#1D4ED8" />
+      <path d="M 140 85 Q 180 95 215 125 L 210 135 Q 170 128 140 120 Z" fill="#FFFFFF" stroke="#1E40AF" stroke-width="2" />
+      <circle cx="212" cy="126" r="6" fill="#0F172A" />
+      <ellipse cx="145" cy="85" rx="7" ry="4" fill="#0F172A" transform="rotate(-15 145 85)" />
+    </g>
+  </g>
+
+  <!-- Bottom Partner Network Badge Banner -->
+  <g transform="translate(600, 420)">
+    <rect x="-180" y="-18" width="360" height="36" rx="18" fill="#081433" fill-opacity="0.85" stroke="#38BDF8" stroke-opacity="0.4" stroke-width="1.5" />
+    <text x="0" y="5" text-anchor="middle" font-family="'Plus Jakarta Sans', 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#93C5FD" letter-spacing="3.5">PARTNER ESTABLISHMENT</text>
+  </g>
+</svg>
