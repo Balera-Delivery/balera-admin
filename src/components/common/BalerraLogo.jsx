@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const BalerraLogo = ({ size = 'default', showText = true, className = '' }) => {
+export const BalerraLogo = ({ size = 'default', showText = true, className = '', dark = false }) => {
   const sizeClasses = {
     small: 'w-8 h-8',
     default: 'w-10 h-10',
@@ -21,10 +21,14 @@ export const BalerraLogo = ({ size = 'default', showText = true, className = '' 
 
       {showText && (
         <div className="flex flex-col">
-          <span className="font-extrabold italic text-lg leading-none tracking-wider text-brand-700 font-sans">
+          <span className={`font-extrabold italic text-lg leading-none tracking-wider font-sans ${
+            dark ? 'text-white' : 'text-brand-700'
+          }`}>
             BALERA
           </span>
-          <span className="text-[10px] font-black italic tracking-[0.2em] text-[#0B3C95] leading-tight">
+          <span className={`text-[10px] font-black italic tracking-[0.2em] leading-tight ${
+            dark ? 'text-sky-400' : 'text-[#0B3C95]'
+          }`}>
             DELIVERY
           </span>
         </div>

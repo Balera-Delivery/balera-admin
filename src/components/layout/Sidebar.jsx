@@ -62,22 +62,22 @@ export const Sidebar = () => {
 
   return (
     <aside
-      className={`bg-white border-r border-slate-200/80 flex flex-col h-screen sticky top-0 z-30 select-none transition-all duration-300 ease-in-out shrink-0 ${
+      className={`bg-[#0A1938] border-r border-[#152B5B] flex flex-col h-screen sticky top-0 z-30 select-none transition-all duration-300 ease-in-out shrink-0 text-slate-200 ${
         isCollapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Brand Header & Toggle */}
-      <div className={`h-20 flex items-center border-b border-slate-100 ${
+      <div className={`h-20 flex items-center border-b border-[#152B5B] ${
         isCollapsed ? 'justify-center px-2' : 'justify-between px-5'
       }`}>
         <NavLink to="/" className="flex items-center gap-3 overflow-hidden" title="Balerra Delivery">
-          <BalerraLogo size={isCollapsed ? 'small' : 'default'} showText={!isCollapsed} />
+          <BalerraLogo size={isCollapsed ? 'small' : 'default'} showText={!isCollapsed} dark={true} />
         </NavLink>
 
         {!isCollapsed && (
           <button
             onClick={toggleCollapse}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             title="Collapse sidebar"
           >
             <PanelLeftClose className="w-4 h-4" />
@@ -99,8 +99,8 @@ export const Sidebar = () => {
                   isCollapsed ? 'justify-center p-3' : 'justify-between px-3.5 py-2.5'
                 } ${
                   isActive
-                    ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/25'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/35 font-bold'
+                    : 'text-slate-300 hover:text-white hover:bg-white/10'
                 }`
               }
             >
@@ -108,10 +108,12 @@ export const Sidebar = () => {
                 <>
                   <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
                     <div className="relative">
-                      <Icon className="w-4 h-4 shrink-0" />
+                      <Icon className={`w-4 h-4 shrink-0 transition-colors ${
+                        isActive ? 'text-white' : 'text-blue-300/75 group-hover:text-white'
+                      }`} />
                       {/* Collapsed notification dot badge */}
                       {isCollapsed && item.badge > 0 && (
-                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
+                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#0A1938]" />
                       )}
                     </div>
                     {!isCollapsed && <span>{item.label}</span>}
@@ -125,7 +127,7 @@ export const Sidebar = () => {
 
                   {/* Floating tooltip when collapsed */}
                   {isCollapsed && (
-                    <div className="fixed left-20 ml-2 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 flex items-center gap-1.5">
+                    <div className="fixed left-20 ml-2 px-3 py-1.5 bg-[#071329] border border-blue-900/60 text-white text-xs font-semibold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 flex items-center gap-1.5">
                       <span>{item.label}</span>
                       {item.badge > 0 && (
                         <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-rose-500 text-white">
@@ -142,16 +144,16 @@ export const Sidebar = () => {
       </div>
 
       {/* Footer: Expand Toggle + Logout */}
-      <div className={`p-3 border-t border-slate-100 space-y-1 ${isCollapsed ? 'px-2' : 'px-3'}`}>
+      <div className={`p-3 border-t border-[#152B5B] space-y-1 ${isCollapsed ? 'px-2' : 'px-3'}`}>
         {/* Expand button when collapsed */}
         {isCollapsed && (
           <button
             onClick={toggleCollapse}
-            className="w-full flex items-center justify-center p-2.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors relative group cursor-pointer"
+            className="w-full flex items-center justify-center p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors relative group cursor-pointer"
             title="Expand sidebar"
           >
             <PanelLeftOpen className="w-4 h-4" />
-            <div className="fixed left-20 ml-2 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+            <div className="fixed left-20 ml-2 px-3 py-1.5 bg-[#071329] border border-blue-900/60 text-white text-xs font-semibold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
               Expand sidebar
             </div>
           </button>
@@ -159,7 +161,7 @@ export const Sidebar = () => {
 
         <button
           onClick={handleLogout}
-          className={`w-full flex items-center rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors relative group cursor-pointer ${
+          className={`w-full flex items-center rounded-xl text-sm font-semibold text-rose-400 hover:text-rose-200 hover:bg-rose-500/15 transition-colors relative group cursor-pointer ${
             isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3.5 py-2.5'
           }`}
           title={isCollapsed ? 'Logout' : undefined}
@@ -169,7 +171,7 @@ export const Sidebar = () => {
 
           {/* Floating tooltip when collapsed */}
           {isCollapsed && (
-            <div className="fixed left-20 ml-2 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+            <div className="fixed left-20 ml-2 px-3 py-1.5 bg-[#071329] border border-blue-900/60 text-white text-xs font-semibold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
               Logout
             </div>
           )}
