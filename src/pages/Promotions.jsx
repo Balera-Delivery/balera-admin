@@ -19,7 +19,9 @@ import {
   ArrowUpRight, 
   RefreshCw,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Share2,
+  Send
 } from 'lucide-react';
 import { StatCard } from '../components/common/StatCard';
 import { AddPromotionModal } from '../components/modals/AddPromotionModal';
@@ -47,6 +49,7 @@ export const Promotions = () => {
   const [statusTab, setStatusTab] = useState('ALL'); // ALL, ACTIVE, PAUSED, EXPIRED
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [copiedCode, setCopiedCode] = useState(null);
+  const [sharedId, setSharedId] = useState(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
@@ -83,6 +86,23 @@ export const Promotions = () => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleCopyMarketingText = (promo) => {
+    const discountText = promo.promotionType === 'FREE_DELIVERY'
+      ? 'Free Courier Delivery (Save 100 Birr)'
+      : `${promo.discountValue}${promo.discountType === 'PERCENTAGE' ? '%' : ' Birr'} OFF`;
+    
+    const targetText = promo.restaurant ? `at ${promo.restaurant.name}` : 'on all orders';
+    const expiryText = promo.endDate 
+      ? `\n⏰ Valid until ${new Date(promo.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.` 
+      : '';
+
+    const text = `🎉 Special Offer on Balera Delivery!\nUse promo code *${promo.code}* at checkout to get ${discountText} ${targetText} in Bale Robe! 🛵💨${expiryText}\n📱 Download the Balera app & order now!`;
+
+    navigator.clipboard.writeText(text);
+    setSharedId(promo.id);
+    setTimeout(() => setSharedId(null), 2500);
   };
 
   const handleAddPromotion = async (newPromo) => {
@@ -432,6 +452,9 @@ export const Promotions = () => {
                         ) : (
                           <span className="text-slate-600 font-medium">All Deliveries</span>
                         )}
+                        <span className="block text-[10px] text-slate-400 mt-0.5">
+                          Funded: {promo.fundedBy === 'RESTAURANT' ? 'Restaurant' : promo.fundedBy === 'SPLIT_50_50' ? '50/50 Split' : 'Balera'}
+                        </span>
                       </td>
 
                       {/* Usage */}
@@ -490,6 +513,21 @@ export const Promotions = () => {
                       {/* Actions */}
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleCopyMarketingText(promo)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              sharedId === promo.id
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'text-slate-400 hover:text-brand-600 hover:bg-brand-50'
+                            }`}
+                            title="Copy Telegram/SMS announcement message"
+                          >
+                            {sharedId === promo.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Share2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
                           <button
                             onClick={() => setEditingPromotion(promo)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"

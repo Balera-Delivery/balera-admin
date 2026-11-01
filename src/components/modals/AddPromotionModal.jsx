@@ -22,6 +22,7 @@ export const AddPromotionModal = ({ isOpen, onClose, onAddPromotion }) => {
   const [discountType, setDiscountType] = useState('PERCENTAGE'); // PERCENTAGE, FIXED_AMOUNT
   const [discountValue, setDiscountValue] = useState('20');
   const [restaurantId, setRestaurantId] = useState('');
+  const [fundedBy, setFundedBy] = useState('PLATFORM'); // PLATFORM, RESTAURANT, SPLIT_50_50
   const [endDate, setEndDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
@@ -95,6 +96,7 @@ export const AddPromotionModal = ({ isOpen, onClose, onAddPromotion }) => {
       startDate: new Date().toISOString().split('T')[0],
       endDate: endDate || null,
       isActive: true,
+      fundedBy,
       applicableType: promotionType === 'PARTNER_DISCOUNT' ? 'PARTNER_ONLY' : 'ALL',
       restaurantId: promotionType === 'PARTNER_DISCOUNT' ? restaurantId : null,
       restaurant: selectedHotel ? { id: selectedHotel.id, name: selectedHotel.name, code: selectedHotel.code } : null
@@ -331,6 +333,46 @@ export const AddPromotionModal = ({ isOpen, onClose, onAddPromotion }) => {
               {errors.discountValue && <p className="text-xs text-rose-500 mt-1 font-semibold">{errors.discountValue}</p>}
             </div>
           )}
+
+          {/* Who covers the discount */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Who covers this discount cost?</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setFundedBy('PLATFORM')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                  fundedBy === 'PLATFORM'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-xs'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Balera (100%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setFundedBy('RESTAURANT')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                  fundedBy === 'RESTAURANT'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-xs'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Restaurant (100%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setFundedBy('SPLIT_50_50')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                  fundedBy === 'SPLIT_50_50'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-xs'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                50% / 50% Split
+              </button>
+            </div>
+          </div>
 
           {/* Expiration Date */}
           <div>
