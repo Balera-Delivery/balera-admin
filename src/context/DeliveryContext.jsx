@@ -51,7 +51,7 @@ export const normalizeRiderAccountStatus = (s) => {
 };
 
 // Helper to format backend delivery into frontend model
-export const formatBackendDelivery = (d, i = 0) => {
+const formatBackendDelivery = (d, i = 0) => {
   if (!d) return null;
 
   const safeNum = (val, fallback) => {
