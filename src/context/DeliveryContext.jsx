@@ -6,6 +6,7 @@ import { riderApi } from '../api/services/riderApi';
 import { deliveryApi } from '../api/services/deliveryApi';
 import { settingsApi } from '../api/services/settingsApi';
 import { checkBackendHealth } from '../api/client';
+import { onDeliveryUpdate, onAdminNotification } from '../services/socket';
 
 const DeliveryContext = createContext();
 
@@ -364,7 +365,20 @@ export const DeliveryProvider = ({ children }) => {
   useEffect(() => {
     syncWithBackend();
     const interval = setInterval(syncWithBackend, 8000);
-    return () => clearInterval(interval);
+
+    // Instant WebSocket trigger on new delivery or status change
+    const unsubUpdate = onDeliveryUpdate(() => {
+      syncWithBackend();
+    });
+    const unsubNotif = onAdminNotification(() => {
+      syncWithBackend();
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubUpdate?.();
+      unsubNotif?.();
+    };
   }, [syncWithBackend]);
 
   // Fetch individual delivery directly from backend (for deep links and refreshes)
