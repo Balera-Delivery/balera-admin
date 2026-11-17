@@ -1,49 +1,36 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Calendar, CheckCircle, CreditCard, Download, FileText, CheckCircle2, DollarSign, Wallet } from 'lucide-react';
+import { ProfileIcon } from '../components/common/ProfileIcon';
+import { CheckCircle, CreditCard, FileText, CheckCircle2, DollarSign, Wallet } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { AddPaymentModal } from '../components/modals/AddPaymentModal';
 import { MarkRiderPaidModal } from '../components/modals/MarkRiderPaidModal';
+import { Modal } from '../components/common/Modal';
 import { useDelivery } from '../context/DeliveryContext';
 
 export const RiderPayments = () => {
-  const { riders, payments, deliveries, markPaymentPaid } = useDelivery();
-  const [selectedMonth, setSelectedMonth] = useState('Current Period');
+  const { riders, payments, payoutsSummary } = useDelivery();
   const [activeTab, setActiveTab] = useState('balances'); // 'balances' | 'history'
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [settleModalRider, setSettleModalRider] = useState(null);
+  const [slipPayment, setSlipPayment] = useState(null); // payout slip shown in the in-app box
 
-  // Compute live earnings and payouts per rider
+  // Real earnings / paid / owed per rider, calculated by the server from completed deliveries
   const riderPayoutData = useMemo(() => {
-    return riders.map(rider => {
-      // Completed deliveries for this rider
-      const riderDeliveries = deliveries.filter(
-        d => (d.riderId === rider.id || d.riderName === rider.name) &&
-             (d.status === 'Completed' || d.status === 'Delivered')
-      );
-      const completedCount = riderDeliveries.length || rider.completedDeliveries || 0;
-
-      // Rate per delivery (e.g. 50 ETB default or sum of rider delivery fee)
-      const earned = completedCount * 50;
-
-      // Sum of payments already disbursed
-      const paid = payments
-        .filter(p => (p.riderId === rider.id || p.riderName === rider.name) && p.status === 'Paid')
-        .reduce((sum, p) => sum + (p.amountNum || 0), 0);
-
-      const balanceOwed = Math.max(0, earned - paid);
-
+    return (payoutsSummary || []).map((p) => {
+      const rider = riders.find((r) => r.id === p.riderId);
       return {
-        ...rider,
-        completedDeliveriesCount: completedCount,
-        totalEarned: earned,
-        totalPaid: paid,
-        balanceOwed,
+        id: p.riderId,
+        name: p.fullName || rider?.name || 'Rider',
+        phone: p.phoneNumber || rider?.phone || '',
+        completedDeliveriesCount: p.completedDeliveriesCount || 0,
+        unpaidDeliveriesCount: p.unpaidDeliveriesCount || 0,
+        totalEarned: Number(p.totalEarned) || 0,
+        totalPaid: Number(p.totalPaid) || 0,
+        balanceOwed: Number(p.amountOwed) || 0,
       };
     });
-  }, [riders, deliveries, payments]);
+  }, [payoutsSummary, riders]);
 
   const totalEarnedAll = riderPayoutData.reduce((sum, r) => sum + r.totalEarned, 0);
-  const totalPaidAll = payments.filter(p => p.status === 'Paid').reduce((acc, p) => acc + (p.amountNum || 0), 0);
+  const totalPaidAll = riderPayoutData.reduce((sum, r) => sum + r.totalPaid, 0);
   const totalPendingOwed = riderPayoutData.reduce((sum, r) => sum + r.balanceOwed, 0);
 
   return (
@@ -57,16 +44,6 @@ export const RiderPayments = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Add Manual Payment Button */}
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-brand-500/25 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Record Custom Payment</span>
-          </button>
-        </div>
       </div>
 
       {/* Payout Summary Cards */}
@@ -157,11 +134,7 @@ export const RiderPayments = () => {
                   <tr key={rider.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={rider.avatar}
-                          alt={rider.name}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
+                        <ProfileIcon className="w-8 h-8 rounded-full" label={rider.name} />
                         <div>
                           <span className="font-bold text-slate-900 block">{rider.name}</span>
                           <span className="text-[11px] text-slate-400 font-mono">{rider.phone}</span>
@@ -169,7 +142,7 @@ export const RiderPayments = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 font-bold text-slate-900">
-                      {rider.completedDeliveriesCount} trips
+                      {rider.completedDeliveriesCount} {rider.completedDeliveriesCount === 1 ? 'trip' : 'trips'}
                     </td>
                     <td className="px-6 py-4 font-extrabold text-slate-900 font-mono">
                       ETB {rider.totalEarned.toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -204,6 +177,13 @@ export const RiderPayments = () => {
                     </td>
                   </tr>
                 ))}
+                {riderPayoutData.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-xs font-semibold">
+                      No rider earnings yet. Earnings appear here after riders complete deliveries.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -250,27 +230,24 @@ export const RiderPayments = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {payment.status === 'Pending' ? (
-                          <button
-                            onClick={() => markPaymentPaid(payment.id)}
-                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs transition-colors flex items-center gap-1"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            <span>Mark Paid</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => alert(`Payment Slip for ${payment.riderName}\nAmount: ${payment.amount}\nMethod: ${payment.paymentMethod || 'Telebirr'}\nReference: ${payment.referenceNumber || payment.id}\nStatus: Settled`)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                            title="View Payout Slip"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setSlipPayment(payment)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          title="View Payout Slip"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))}
+                {payments.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400 text-xs font-semibold">
+                      No payouts recorded yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -278,10 +255,6 @@ export const RiderPayments = () => {
       )}
 
       {/* Add Custom Payment Modal */}
-      <AddPaymentModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-      />
 
       {/* Settle / Mark as Paid Modal */}
       <MarkRiderPaidModal
@@ -289,8 +262,44 @@ export const RiderPayments = () => {
         onClose={() => setSettleModalRider(null)}
         rider={settleModalRider}
         balanceOwed={settleModalRider?.balanceOwed || 0}
-        completedDeliveries={settleModalRider?.completedDeliveriesCount || 0}
+        completedDeliveries={settleModalRider?.unpaidDeliveriesCount || 0}
       />
+
+      {/* Payout slip */}
+      <Modal isOpen={!!slipPayment} onClose={() => setSlipPayment(null)} title="Payout slip" maxWidth="max-w-sm">
+        {slipPayment && (
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-2 pb-4 border-b border-dashed border-slate-200">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              </div>
+              <p className="text-xs font-semibold text-slate-500">Paid to {slipPayment.riderName}</p>
+              <p className="text-2xl font-extrabold text-slate-900">{slipPayment.amount}</p>
+            </div>
+            <dl className="text-xs space-y-2.5">
+              {[
+                ['Method', slipPayment.paymentMethod || 'Telebirr'],
+                ['Reference', slipPayment.referenceNumber || slipPayment.id],
+                ['Period', slipPayment.period || '—'],
+                ['Deliveries', slipPayment.totalDeliveries ?? '—'],
+                ['Status', 'Settled'],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-4">
+                  <dt className="text-slate-500 font-medium">{label}</dt>
+                  <dd className="font-bold text-slate-900 font-mono text-right break-all">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <button
+              type="button"
+              onClick={() => setSlipPayment(null)}
+              className="w-full py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl"
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

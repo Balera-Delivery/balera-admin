@@ -3,97 +3,36 @@ import { apiClient } from '../client';
 export const INITIAL_PROMOTIONS = [];
 
 export const promotionsApi = {
-  /**
-   * Get all promotions from backend
-   */
+  // Every call goes to the server; errors are passed on so the page can show them
+  // (a promotion that only exists in this browser could never be used by customers).
   getPromotions: async (params = {}) => {
-    try {
-      const res = await apiClient.get('/promotions', { params });
-      if (res.data?.data && Array.isArray(res.data.data)) {
-        return res.data.data;
-      }
-      return [];
-    } catch (e) {
-      console.warn('Backend /promotions endpoint unavailable, using local cache:', e.message);
-      try {
-        const local = localStorage.getItem('balera_promotions_cache');
-        return local ? JSON.parse(local) : [];
-      } catch {
-        return [];
-      }
-    }
+    const res = await apiClient.get('/promotions', { params });
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
 
-  /**
-   * Get promotion by ID
-   */
   getPromotionById: async (id) => {
-    try {
-      const res = await apiClient.get(`/promotions/${id}`);
-      return res.data?.data;
-    } catch (e) {
-      try {
-        const local = localStorage.getItem('balera_promotions_cache');
-        const list = local ? JSON.parse(local) : [];
-        return list.find(p => p.id === id);
-      } catch {
-        return null;
-      }
-    }
+    const res = await apiClient.get(`/promotions/${id}`);
+    return res.data?.data;
   },
 
-  /**
-   * Create new promotion
-   */
   createPromotion: async (promoData) => {
-    try {
-      const res = await apiClient.post('/promotions', promoData);
-      return res.data?.data;
-    } catch (e) {
-      console.warn('Failed to post to backend, creating in local cache:', e.message);
-      return {
-        id: `PROMO-${Date.now().toString().slice(-4)}`,
-        usedCount: 0,
-        createdAt: new Date().toISOString(),
-        ...promoData
-      };
-    }
+    const res = await apiClient.post('/promotions', promoData);
+    return res.data?.data;
   },
 
-  /**
-   * Update promotion
-   */
   updatePromotion: async (id, updatedData) => {
-    try {
-      const res = await apiClient.put(`/promotions/${id}`, updatedData);
-      return res.data?.data;
-    } catch (e) {
-      return { id, ...updatedData };
-    }
+    const res = await apiClient.put(`/promotions/${id}`, updatedData);
+    return res.data?.data;
   },
 
-  /**
-   * Toggle Active / Paused status
-   */
   toggleStatus: async (id) => {
-    try {
-      const res = await apiClient.patch(`/promotions/${id}/toggle`);
-      return res.data?.data;
-    } catch (e) {
-      return { id, toggled: true };
-    }
+    const res = await apiClient.patch(`/promotions/${id}/toggle`);
+    return res.data?.data;
   },
 
-  /**
-   * Delete promotion
-   */
   deletePromotion: async (id) => {
-    try {
-      const res = await apiClient.delete(`/promotions/${id}`);
-      return res.data;
-    } catch (e) {
-      return { success: true };
-    }
+    const res = await apiClient.delete(`/promotions/${id}`);
+    return res.data;
   },
 
   /**

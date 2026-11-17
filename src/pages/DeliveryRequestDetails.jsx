@@ -32,9 +32,11 @@ import {
   FileImage
 } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { BackButton } from '../components/common/BackButton';
 import { DeliveryRouteMap } from '../components/maps/DeliveryRouteMap';
 import { AssignRiderModal } from '../components/modals/AssignRiderModal';
 import { ChangeStatusModal } from '../components/modals/ChangeStatusModal';
+import { CancelDeliveryModal } from '../components/modals/CancelDeliveryModal';
 import { useDelivery, normalizePaymentOption } from '../context/DeliveryContext';
 
 export const DeliveryRequestDetails = () => {
@@ -45,6 +47,8 @@ export const DeliveryRequestDetails = () => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [actionError, setActionError] = useState('');
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [fetchedDelivery, setFetchedDelivery] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -107,29 +111,34 @@ export const DeliveryRequestDetails = () => {
     );
   }
 
-  const pickupCoord = delivery.routeCoordinates?.[0] || [9.0054, 38.7885];
-  const destCoord = delivery.routeCoordinates?.[delivery.routeCoordinates.length - 1] || [9.0345, 38.7512];
+  // The map is shown only when the order has real pickup and drop-off coordinates
+  const hasRoute = Array.isArray(delivery.routeCoordinates) && delivery.routeCoordinates.length >= 2;
+  const pickupCoord = hasRoute ? delivery.routeCoordinates[0] : null;
+  const destCoord = hasRoute ? delivery.routeCoordinates[delivery.routeCoordinates.length - 1] : null;
 
   // OTP safe string extraction
   const otpDisplay = typeof delivery.otp === 'object' 
-    ? (delivery.otp?.otpCode || '4921')
-    : (delivery.otp || '4921');
+    ? (delivery.otp?.otpCode || null)
+    : (delivery.otp || null);
 
   const handleVerifyPayment = async () => {
     setIsVerifyingPayment(true);
+    setActionError('');
     const targetId = delivery.backendId || delivery.id;
-    await updatePaymentStatus(targetId, 'VERIFIED_PAID');
+    const res = await updatePaymentStatus(targetId, 'VERIFIED_PAID');
     setIsVerifyingPayment(false);
+    if (!res?.success) setActionError(res?.message || 'Could not verify the payment.');
   };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold">
-        <Link to="/deliveries" className="hover:text-brand-600 transition-colors">Delivery Requests</Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-slate-700">{delivery.id}</span>
-      </div>
+      <BackButton fallback="/deliveries" parentLabel="Delivery Requests" currentLabel={delivery.id} />
+
+      {actionError && (
+        <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700">
+          {actionError}
+        </div>
+      )}
 
       {/* Main Split Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -218,36 +227,80 @@ export const DeliveryRequestDetails = () => {
                   <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
                     <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Utensils className="w-3.5 h-3.5 text-brand-600" />
-                      <span>Customer Ordered Dishes ({delivery.orderItems.length})</span>
+                      <span>
+                        Customer Ordered Dishes ({delivery.orderItems.length})
+                        {delivery.pickupStops?.length > 1 && ` · ${delivery.pickupStops.length} Hotels`}
+                      </span>
                     </span>
                     <span className="text-[10px] text-slate-500 font-semibold">Kitchen Order Ticket</span>
                   </div>
 
-                  <div className="space-y-2">
-                    {delivery.orderItems.map((item, idx) => (
-                      <div key={item.id || idx} className="bg-white p-3 rounded-xl border border-slate-200/70 shadow-2xs space-y-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <span className="w-7 h-7 rounded-lg bg-amber-500 text-white font-extrabold text-xs flex items-center justify-center shadow-2xs shrink-0">
-                              {item.quantity}x
-                            </span>
-                            <div>
-                              <span className="font-bold text-xs text-slate-900 block">{item.name}</span>
-                              {item.category && (
-                                <span className="text-[10px] text-slate-400">{item.category}</span>
+                  {delivery.pickupStops?.length > 1 && (
+                    <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/80 rounded-lg px-2.5 py-1.5 font-semibold">
+                      Multi-hotel order: the rider must pick up from all {delivery.pickupStops.length} hotels below before delivering.
+                    </p>
+                  )}
+
+                  {/* One card per pickup stop (hotel), each with its own dishes and subtotal */}
+                  <div className="space-y-3">
+                    {(delivery.pickupStops?.length ? delivery.pickupStops : [{ name: delivery.restaurant?.name || 'Partner Restaurant', address: delivery.restaurant?.address || '', phone: delivery.restaurant?.phone1 || '', items: delivery.orderItems, subtotal: delivery.subtotal }]).map((stop, stopIdx, stops) => (
+                      <div key={stop.restaurantId || stop.name || stopIdx} className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                        <div className="flex items-start justify-between gap-3 px-3 py-2.5 bg-slate-50/80 border-b border-slate-200/70">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            {stops.length > 1 && (
+                              <span className="w-6 h-6 rounded-full bg-brand-600 text-white text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
+                                {stopIdx + 1}
+                              </span>
+                            )}
+                            <div className="min-w-0">
+                              <span className="font-extrabold text-xs text-slate-900 block truncate">{stop.name}</span>
+                              {stop.address && (
+                                <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                  <MapPin className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{stop.address}</span>
+                                </span>
                               )}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <span className="font-bold text-xs text-slate-900">ETB {Number(item.subtotal || (item.price * item.quantity)).toFixed(2)}</span>
-                            <span className="text-[10px] text-slate-400 block">ETB {Number(item.price || 0).toFixed(2)} each</span>
+                          <div className="text-right shrink-0">
+                            <span className="font-extrabold text-xs text-slate-900 block">ETB {Number(stop.subtotal || 0).toFixed(2)}</span>
+                            {stop.phone && (
+                              <a href={`tel:${stop.phone}`} className="text-[10px] font-bold text-brand-600 hover:underline flex items-center gap-1 justify-end mt-0.5">
+                                <Phone className="w-3 h-3" />
+                                <span>{stop.phone}</span>
+                              </a>
+                            )}
                           </div>
                         </div>
-                        {item.notes && (
-                          <p className="text-[11px] text-amber-800 bg-amber-50/90 px-2.5 py-1 rounded-lg italic border border-amber-200/70 mt-1">
-                            Note: "{item.notes}"
-                          </p>
-                        )}
+
+                        <div className="divide-y divide-slate-100">
+                          {stop.items.map((item, idx) => (
+                            <div key={item.id || idx} className="px-3 py-2.5 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                  <span className="w-7 h-7 rounded-lg bg-amber-500 text-white font-extrabold text-xs flex items-center justify-center shadow-2xs shrink-0">
+                                    {item.quantity}x
+                                  </span>
+                                  <div>
+                                    <span className="font-bold text-xs text-slate-900 block">{item.name}</span>
+                                    {item.category && (
+                                      <span className="text-[10px] text-slate-400">{item.category}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="font-bold text-xs text-slate-900">ETB {Number(item.subtotal || (item.price * item.quantity)).toFixed(2)}</span>
+                                  <span className="text-[10px] text-slate-400 block">ETB {Number(item.price || 0).toFixed(2)} each</span>
+                                </div>
+                              </div>
+                              {item.notes && (
+                                <p className="text-[11px] text-amber-800 bg-amber-50/90 px-2.5 py-1 rounded-lg italic border border-amber-200/70 mt-1">
+                                  Note: "{item.notes}"
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -259,15 +312,23 @@ export const DeliveryRequestDetails = () => {
                       <span className="font-semibold text-slate-700">ETB {Number(delivery.subtotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-slate-500">
-                      <span>Delivery Fee:</span>
-                      <span className="font-semibold text-slate-700">ETB {Number(delivery.fee || 60).toFixed(2)}</span>
+                      <span>
+                        Delivery Fee{delivery.pickupStops?.length > 1 ? ` (${delivery.pickupStops.length} pickup stops)` : ''}:
+                      </span>
+                      <span className="font-semibold text-slate-700">ETB {Number(delivery.fee || 0).toFixed(2)}</span>
                     </div>
+                    {delivery.discount > 0 && (
+                      <div className="flex justify-between text-emerald-600">
+                        <span>Discount{delivery.promoCode ? ` (${delivery.promoCode})` : ''}:</span>
+                        <span className="font-semibold">− ETB {Number(delivery.discount).toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm font-extrabold text-slate-900 pt-1.5 border-t border-slate-200">
                       <span>Total Order Cost:</span>
                       <span className="text-brand-600">
                         {typeof delivery.totalAmount === 'number' 
                           ? `ETB ${delivery.totalAmount.toFixed(2)}` 
-                          : (delivery.amount || `ETB ${(Number(delivery.subtotal || 0) + Number(delivery.fee || 60)).toFixed(2)}`)}
+                          : (delivery.amount || `ETB ${(Number(delivery.subtotal || 0) + Number(delivery.fee || 0)).toFixed(2)}`)}
                       </span>
                     </div>
                   </div>
@@ -581,12 +642,7 @@ export const DeliveryRequestDetails = () => {
 
                     {delivery.status !== 'Cancelled' && delivery.status !== 'Completed' && (
                       <button
-                        onClick={() => {
-                          const reason = prompt('Reason for cancelling this delivery:');
-                          if (reason !== null) {
-                            cancelDelivery(delivery.id, reason || 'Cancelled by admin');
-                          }
-                        }}
+                        onClick={() => setIsCancelModalOpen(true)}
                         className="w-full sm:w-auto py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-colors text-center"
                         title="Cancel Delivery"
                       >
@@ -609,19 +665,25 @@ export const DeliveryRequestDetails = () => {
                 Route & Live Location Map
               </h3>
               <span className="text-xs font-semibold text-slate-400">
-                Est. Distance: {delivery.distance || '5.8 km'}
+                {delivery.distance ? `Est. Distance: ${delivery.distance}` : ''}
               </span>
             </div>
 
             <div className="flex-1 rounded-xl overflow-hidden">
-              <DeliveryRouteMap
-                pickup={pickupCoord}
-                destination={destCoord}
-                riderPosition={delivery.riderPosition}
-                routeCoordinates={delivery.routeCoordinates}
-                pickupLabel={delivery.pickupLocation}
-                destinationLabel={delivery.destination}
-              />
+              {hasRoute ? (
+                <DeliveryRouteMap
+                  pickup={pickupCoord}
+                  destination={destCoord}
+                  riderPosition={delivery.riderPosition}
+                  routeCoordinates={delivery.routeCoordinates}
+                  pickupLabel={delivery.pickupLocation}
+                  destinationLabel={delivery.destination}
+                />
+              ) : (
+                <div className="w-full h-full min-h-[240px] rounded-xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-center p-6">
+                  <p className="text-xs font-semibold text-slate-400">No map location was saved for this order.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -665,6 +727,12 @@ export const DeliveryRequestDetails = () => {
       </div>
 
       {/* Modals */}
+      <CancelDeliveryModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        deliveryId={delivery.id}
+        onConfirm={(reason) => cancelDelivery(delivery.backendId || delivery.id, reason)}
+      />
       <AssignRiderModal
         isOpen={isAssignModalOpen}
         onClose={() => setIsAssignModalOpen(false)}

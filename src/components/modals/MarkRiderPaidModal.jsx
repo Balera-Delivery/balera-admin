@@ -13,6 +13,7 @@ export const MarkRiderPaidModal = ({ isOpen, onClose, rider, balanceOwed = 0, co
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (rider) {
@@ -23,22 +24,24 @@ export const MarkRiderPaidModal = ({ isOpen, onClose, rider, balanceOwed = 0, co
         notes: `Settlement for ${completedDeliveries} completed deliveries`,
       });
       setSuccess(false);
+      setError('');
       setIsSubmitting(false);
     }
   }, [rider, balanceOwed, completedDeliveries, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.amount || Number(formData.amount) <= 0) {
-      alert('Please enter a valid payout amount.');
+    if (!(Number(balanceOwed) > 0)) {
+      setError('This rider has nothing to be paid right now.');
       return;
     }
 
+    setError('');
     setIsSubmitting(true);
     try {
       await markRiderPaidFromApi(rider.id, {
         riderName: rider.name,
-        amount: Number(formData.amount),
+        amount: Number(balanceOwed),
         totalDeliveries: completedDeliveries,
         paymentMethod: formData.paymentMethod,
         reference: formData.reference,
@@ -52,7 +55,7 @@ export const MarkRiderPaidModal = ({ isOpen, onClose, rider, balanceOwed = 0, co
       }, 700);
     } catch (err) {
       setIsSubmitting(false);
-      alert(err.message || 'Failed to record payout.');
+      setError(err.response?.data?.message || err.message || 'Failed to record payout.');
     }
   };
 
@@ -61,6 +64,11 @@ export const MarkRiderPaidModal = ({ isOpen, onClose, rider, balanceOwed = 0, co
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Settle Payment: ${rider.name}`} maxWidth="max-w-md">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700">
+            {error}
+          </div>
+        )}
         {/* Rider Summary Header */}
         <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between text-xs">
           <div>
@@ -75,17 +83,14 @@ export const MarkRiderPaidModal = ({ isOpen, onClose, rider, balanceOwed = 0, co
 
         {/* Amount to Pay */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">Payout Amount (ETB) *</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-400">ETB</span>
-            <input
-              type="number"
-              required
-              min="1"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              className="w-full pl-12 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-900"
-            />
+          <p className="block text-xs font-bold text-slate-700 mb-1">Amount to pay</p>
+          <div className="px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+            <span className="text-sm font-extrabold text-emerald-700">
+              ETB {Number(balanceOwed).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </span>
+            <span className="text-[11px] font-semibold text-emerald-700">
+              {completedDeliveries > 0 ? 'All unpaid completed deliveries' : ''}
+            </span>
           </div>
         </div>
 

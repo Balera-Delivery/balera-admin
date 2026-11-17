@@ -9,12 +9,14 @@ export const ChangeStatusModal = ({ isOpen, onClose, delivery }) => {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedOtp, setCopiedOtp] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (delivery) {
-      setNewStatus(delivery.status || 'Pending');
+      setNewStatus('');
       setNotes('');
       setCopiedOtp(false);
+      setSubmitError('');
     }
   }, [delivery, isOpen]);
 
@@ -22,8 +24,8 @@ export const ChangeStatusModal = ({ isOpen, onClose, delivery }) => {
 
   // Extract OTP safely
   const otpCode = typeof delivery.otp === 'object'
-    ? (delivery.otp?.otpCode || '482913')
-    : (delivery.otp || '482913');
+    ? (delivery.otp?.otpCode || null)
+    : (delivery.otp || null);
 
   const handleCopyOtp = () => {
     navigator.clipboard?.writeText(String(otpCode));
@@ -31,29 +33,25 @@ export const ChangeStatusModal = ({ isOpen, onClose, delivery }) => {
     setTimeout(() => setCopiedOtp(false), 2000);
   };
 
+  // Only forward steps (assigning and cancelling have their own buttons)
+  const flow = ['Assigned', 'Accepted', 'Arrived at Pickup', 'Picked Up', 'On the Way', 'Delivered', 'Completed'];
+  const currentIndex = flow.indexOf(delivery.status);
+  const statuses = currentIndex === -1 ? [] : flow.slice(currentIndex + 1);
+  const canChange = !!delivery.riderId && statuses.length > 0;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await changeDeliveryStatus(delivery.backendId || delivery.id, newStatus, notes);
-      onClose();
-    } catch (err) {
-      console.error('Failed to change status:', err);
-    } finally {
-      setIsSubmitting(false);
+    if (!statuses.includes(newStatus)) {
+      setSubmitError('Choose the new status.');
+      return;
     }
+    setIsSubmitting(true);
+    setSubmitError('');
+    const res = await changeDeliveryStatus(delivery.backendId || delivery.id, newStatus, notes);
+    setIsSubmitting(false);
+    if (res?.success) onClose();
+    else setSubmitError(res?.message || 'Could not change the status.');
   };
-
-  const statuses = [
-    'Pending',
-    'Assigned',
-    'Accepted',
-    'Picked Up',
-    'On the Way',
-    'Delivered',
-    'Completed',
-    'Cancelled'
-  ];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Support Override / Status: ${delivery.id}`}>
@@ -71,10 +69,11 @@ export const ChangeStatusModal = ({ isOpen, onClose, delivery }) => {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-mono font-extrabold text-sm bg-white px-2.5 py-1 rounded-lg border border-amber-200 text-amber-950 tracking-widest shadow-sm">
-              {otpCode}
+              {otpCode || 'Not available'}
             </span>
             <button
               type="button"
+              disabled={!otpCode}
               onClick={handleCopyOtp}
               title="Copy OTP to clipboard"
               className="p-1.5 text-xs text-amber-700 hover:text-amber-900 hover:bg-amber-100/80 rounded-lg transition-colors"
@@ -91,10 +90,18 @@ export const ChangeStatusModal = ({ isOpen, onClose, delivery }) => {
             onChange={(e) => setNewStatus(e.target.value)}
             className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-medium text-slate-800"
           >
+            <option value="" disabled>Choose the new status…</option>
             {statuses.map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+          {!canChange && (
+            <p className="mt-1.5 text-[11px] font-semibold text-amber-700">
+              {!delivery.riderId
+                ? 'Assign a rider first. Use "Assign Rider" for that.'
+                : 'This delivery is finished, so its status can no longer change.'}
+            </p>
+          )}
         </div>
 
         <div>
@@ -109,8 +116,14 @@ export const ChangeStatusModal = ({ isOpen, onClose, delivery }) => {
         </div>
 
         <p className="text-[11.5px] text-slate-500 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-          💡 <strong>Notice:</strong> Updating this status immediately synchronizes both the <strong>Customer App</strong> and <strong>Rider App</strong> in real time. Marking as <strong>Completed</strong> completes the delivery and overrides OTP.
+          💡 <strong>Notice:</strong> Use this only when the rider app can't update the order. The customer and rider are notified, and the change is saved in the order history. <strong>Completed</strong> finishes the delivery without the OTP.
         </p>
+
+        {submitError && (
+          <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700">
+            {submitError}
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
           <button
@@ -123,10 +136,10 @@ export const ChangeStatusModal = ({ isOpen, onClose, delivery }) => {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canChange || !newStatus}
             className="px-5 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm shadow-brand-500/30 transition-all disabled:opacity-50"
           >
-            {isSubmitting ? 'Updating...' : 'Update & Sync All Apps'}
+            {isSubmitting ? 'Updating...' : 'Update status'}
           </button>
         </div>
       </form>

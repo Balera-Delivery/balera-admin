@@ -43,8 +43,20 @@ export const riderApi = {
   },
 
   // Toggle Rider Deactivation (Active <-> Inactive / Deactivated)
-  toggleDeactivation: async (id) => {
-    const res = await apiClient.patch(`/admin/riders/${id}/deactivate`);
+  toggleDeactivation: async (id, isDeactivated) => {
+    const res = await apiClient.patch(`/admin/riders/${id}/deactivate`, { isDeactivated });
+    return res.data;
+  },
+
+  // Admin sets a new password for a rider
+  resetPassword: async (id, password) => {
+    const res = await apiClient.patch(`/admin/riders/${id}/password`, { password });
+    return res.data;
+  },
+
+  // Set Rider Online / Offline (saved on the server)
+  setAvailability: async (id, status) => {
+    const res = await apiClient.patch(`/admin/riders/${id}/availability`, { status });
     return res.data;
   },
 
@@ -57,6 +69,12 @@ export const riderApi = {
   // Get Rider Payouts Summary across all riders
   getPayoutsSummary: async () => {
     const res = await apiClient.get('/admin/riders/payouts');
+    return res.data;
+  },
+
+  // Every payout made to riders (newest first)
+  getPayoutHistory: async () => {
+    const res = await apiClient.get('/admin/riders/payouts/history');
     return res.data;
   },
 

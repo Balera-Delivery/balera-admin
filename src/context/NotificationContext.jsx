@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initialNotifications } from '../data/mockData';
 import { notificationApi } from '../api/services/notificationApi';
 import { onAdminNotification } from '../services/socket';
 
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState([]);
 
   // Sync notifications with backend on mount
   useEffect(() => {
@@ -14,7 +13,7 @@ export const NotificationProvider = ({ children }) => {
       try {
         const res = await notificationApi.getNotifications({ limit: 50 });
         const items = res.notifications || res.data?.notifications || res.data;
-        if (Array.isArray(items) && items.length > 0) {
+        if (Array.isArray(items)) {
           setNotifications(items.map(n => ({
             id: n.id || `NOTIF-${String(Date.now()).slice(-4)}`,
             title: n.title ? `${n.title}: ${n.message}` : n.message,
@@ -93,27 +92,15 @@ export const NotificationProvider = ({ children }) => {
     setNotifications([]);
   };
 
-  const addNotification = async ({ title, message, targetRole = 'ALL', type = 'info', iconColor }) => {
+  // Sends a push message to the chosen users (targetRole: 'ALL' | 'CUSTOMER' | 'RIDER').
+  // Returns the real result so the page can show success or the error.
+  const sendBroadcast = async ({ targetRole, title, message }) => {
     try {
-      await notificationApi.sendNotification({
-        targetRole,
-        title: title || 'Admin Notice',
-        message: message || title,
-      });
+      await notificationApi.sendNotification({ targetRole, title, message });
     } catch (err) {
-      console.warn('Backend sendNotification notice:', err.message);
+      return { success: false, message: err.response?.data?.message || err.message };
     }
-
-    const newNotif = {
-      id: `NOTIF-${String(Date.now()).slice(-4)}`,
-      title: title || message,
-      time: 'Just now',
-      date: 'Today',
-      type,
-      isRead: false,
-      iconColor: iconColor || 'text-brand-600 bg-brand-50'
-    };
-    setNotifications(prev => [newNotif, ...prev]);
+    return { success: true };
   };
 
   return (
@@ -124,7 +111,7 @@ export const NotificationProvider = ({ children }) => {
       markAsRead,
       deleteNotification,
       clearAllNotifications,
-      addNotification
+      sendBroadcast
     }}>
       {children}
     </NotificationContext.Provider>

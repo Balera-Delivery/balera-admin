@@ -1,7 +1,9 @@
 import React from 'react';
+import { ProfileIcon } from '../components/common/ProfileIcon';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronRight, Phone, Mail, MapPin, Calendar, ArrowLeft, PackageCheck } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { BackButton } from '../components/common/BackButton';
 import { useDelivery } from '../context/DeliveryContext';
 
 export const CustomerDetails = () => {
@@ -9,13 +11,13 @@ export const CustomerDetails = () => {
   const navigate = useNavigate();
   const { customers, deliveries } = useDelivery();
 
-  const customer = customers.find(c => c.id === id) || customers[0];
+  const customer = customers.find(c => c.id === id);
   const customerDeliveries = deliveries.filter(d => d.customerId === customer?.id || d.customerName === customer?.name);
 
   if (!customer) {
     return (
       <div className="p-8 text-center">
-        <p className="text-sm text-slate-500">Customer not found.</p>
+        <p className="text-sm text-slate-500">{customers.length === 0 ? 'Loading…' : 'Customer not found.'}</p>
         <button onClick={() => navigate('/customers')} className="mt-4 text-xs font-bold text-brand-600">
           Back to Customers
         </button>
@@ -25,22 +27,13 @@ export const CustomerDetails = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Breadcrumbs & Header */}
-      <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold">
-        <Link to="/customers" className="hover:text-brand-600 transition-colors">Customers</Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-slate-700">{customer.id}</span>
-      </div>
+      <BackButton fallback="/customers" parentLabel="Customers" currentLabel={customer.name} />
 
       {/* Top 2 Cards: Left Profile + Right Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Profile Card */}
         <div className="md:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          <img
-            src={customer.avatar}
-            alt={customer.name}
-            className="w-20 h-20 rounded-2xl object-cover ring-4 ring-slate-100"
-          />
+          <ProfileIcon className="w-20 h-20 rounded-2xl" label={customer.name} />
 
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">

@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { ProfileIcon } from '../common/ProfileIcon';
 import { Modal } from '../common/Modal';
 import { StatusBadge } from '../common/StatusBadge';
 import { useDelivery } from '../../context/DeliveryContext';
-import { useNotifications } from '../../context/NotificationContext';
 import { dashboardApi } from '../../api/services/dashboardApi';
 import { Bike, CheckCircle2, User, MapPin, Compass, Navigation } from 'lucide-react';
 
 export const AssignRiderModal = ({ isOpen, onClose, delivery }) => {
   const { riders, assignRider } = useDelivery();
-  const { addNotification } = useNotifications();
   const [selectedRiderId, setSelectedRiderId] = useState(delivery?.riderId || '');
   const [nearbyRiders, setNearbyRiders] = useState([]);
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
+  const [assignError, setAssignError] = useState('');
 
   // Fetch proximity dispatch list if coordinates are available
   useEffect(() => {
@@ -47,16 +47,13 @@ export const AssignRiderModal = ({ isOpen, onClose, delivery }) => {
   const handleAssign = async () => {
     if (!selectedRiderId) return;
     const targetId = delivery.backendId || delivery.id;
-    const success = await assignRider(targetId, selectedRiderId);
-    if (success) {
-      const rider = riders.find(r => r.id === selectedRiderId);
-      addNotification({
-        title: `Rider ${rider?.name || 'Selected'} assigned to delivery ${delivery.id}`,
-        type: 'rider',
-        iconColor: 'text-brand-600 bg-brand-50'
-      });
-      onClose();
+    setAssignError('');
+    const res = await assignRider(targetId, selectedRiderId);
+    if (!res?.success) {
+      setAssignError(res?.message || 'Could not assign the rider.');
+      return;
     }
+    onClose();
   };
 
   return (
@@ -131,11 +128,7 @@ export const AssignRiderModal = ({ isOpen, onClose, delivery }) => {
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <img
-                        src={rider.avatar}
-                        alt={rider.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
+                      <ProfileIcon className="w-10 h-10 rounded-full" label={rider.name} />
                       <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${isOnline ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                     </div>
 
@@ -168,6 +161,12 @@ export const AssignRiderModal = ({ isOpen, onClose, delivery }) => {
           </div>
         </div>
       </div>
+
+      {assignError && (
+        <div role="alert" className="mt-5 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700">
+          {assignError}
+        </div>
+      )}
 
       <div className="flex items-center justify-end gap-3 pt-5 mt-6 border-t border-slate-100">
         <button

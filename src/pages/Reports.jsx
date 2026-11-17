@@ -8,7 +8,7 @@ import { useDelivery } from '../context/DeliveryContext';
 import { reportsApi } from '../api/services/reportsApi';
 
 export const Reports = () => {
-  const { riders, deliveries, stats } = useDelivery();
+  const { deliveries, stats } = useDelivery();
   const [period, setPeriod] = useState('all');
   const [dateRange, setDateRange] = useState('Active Operations');
   const [reportData, setReportData] = useState(null);
@@ -47,8 +47,6 @@ export const Reports = () => {
     {
       title: 'Total Deliveries',
       value: totalCount.toLocaleString(),
-      change: '+15.3%',
-      isPositive: true,
       subtitle: 'Recorded orders',
     },
     {
@@ -310,7 +308,7 @@ export const Reports = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {kpis.map((kpi, idx) => (
           <StatCard key={idx} {...kpi} />
         ))}
@@ -456,52 +454,6 @@ export const Reports = () => {
                   </td>
                 </tr>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Top Performing Riders Table */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900">Rider Performance Summary</h3>
-          <span className="text-xs text-slate-400">{riders.length} Registered Riders</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/75 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-100">
-              <tr>
-                <th className="px-6 py-3.5">Rider</th>
-                <th className="px-6 py-3.5">Vehicle</th>
-                <th className="px-6 py-3.5">Total Trips</th>
-                <th className="px-6 py-3.5">Completed</th>
-                <th className="px-6 py-3.5">Success Rate</th>
-                <th className="px-6 py-3.5">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {riders.map(r => (
-                <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-6 py-3.5 font-bold text-slate-900 flex items-center gap-2.5">
-                    <img src={r.avatar} alt={r.name} className="w-7 h-7 rounded-full object-cover" />
-                    <span>{r.name}</span>
-                  </td>
-                  <td className="px-6 py-3.5 text-slate-600">{r.vehicle}</td>
-                  <td className="px-6 py-3.5 font-bold text-slate-900">{r.totalDeliveries}</td>
-                  <td className="px-6 py-3.5 text-emerald-600 font-bold">{r.completedDeliveries}</td>
-                  <td className="px-6 py-3.5">
-                    <span className="font-bold text-slate-900">
-                      {Math.round((r.completedDeliveries / (r.totalDeliveries || 1)) * 100)}%
-                    </span>
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                      {r.status || 'Active'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>

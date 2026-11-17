@@ -1,14 +1,29 @@
 import React, { useState, useMemo } from 'react';
+import { ProfileIcon } from '../components/common/ProfileIcon';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Eye, Edit2, Trash2, Power, Filter } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { AddCustomerModal } from '../components/modals/AddCustomerModal';
+import { DeleteConfirmModal } from '../components/modals/DeleteConfirmModal';
 import { useDelivery } from '../context/DeliveryContext';
 
 export const Customers = () => {
   const { customers, deleteCustomer, toggleCustomerStatus } = useDelivery();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [notice, setNotice] = useState(null); // { type: 'success' | 'error', text }
+
+  const showNotice = (type, text) => {
+    setNotice({ type, text });
+    setTimeout(() => setNotice(null), 4000);
+  };
+
+  const handleToggleStatus = async (customer) => {
+    const res = await toggleCustomerStatus(customer.id);
+    if (res?.success) showNotice('success', `${customer.name} is now ${res.status}.`);
+    else showNotice('error', res?.message || 'Could not change the status.');
+  };
   const navigate = useNavigate();
 
   const filteredCustomers = useMemo(() => {
@@ -61,7 +76,7 @@ export const Customers = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/75 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-100">
               <tr>
-                <th className="px-6 py-3.5">ID</th>
+                <th className="hidden md:table-cell px-6 py-3.5">ID</th>
                 <th className="px-6 py-3.5">Name</th>
                 <th className="px-6 py-3.5">Phone</th>
                 <th className="px-6 py-3.5">Total Deliveries</th>
@@ -77,7 +92,7 @@ export const Customers = () => {
                 >
                   <td 
                     onClick={() => navigate(`/customers/${customer.id}`)}
-                    className="px-6 py-4 font-bold text-brand-600 cursor-pointer"
+                    className="hidden md:table-cell px-6 py-4 font-bold text-brand-600 cursor-pointer"
                   >
                     {customer.id}
                   </td>
@@ -86,18 +101,14 @@ export const Customers = () => {
                     className="px-6 py-4 cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <img
-                        src={customer.avatar}
-                        alt={customer.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
+                      <ProfileIcon className="w-8 h-8 rounded-full" label={customer.name} />
                       <span className="font-bold text-slate-900">{customer.name}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-600 font-mono">{customer.phone}</td>
                   <td className="px-6 py-4 font-bold text-slate-900">{customer.totalDeliveries}</td>
                   <td className="px-6 py-4">
-                    <button onClick={() => toggleCustomerStatus(customer.id)} title="Click to toggle status">
+                    <button onClick={() => handleToggleStatus(customer)} title={customer.status === 'Active' ? 'Click to suspend this customer' : 'Click to activate this customer'}>
                       <StatusBadge status={customer.status} />
                     </button>
                   </td>
@@ -111,11 +122,7 @@ export const Customers = () => {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`Delete customer account ${customer.name}?`)) {
-                            deleteCustomer(customer.id);
-                          }
-                        }}
+                        onClick={() => setCustomerToDelete(customer)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                         title="Delete Customer"
                       >
@@ -131,18 +138,7 @@ export const Customers = () => {
 
         {/* Pagination Footer */}
         <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <span>Showing 1 to {filteredCustomers.length} of {customers.length} customers</span>
-          <div className="flex items-center gap-1">
-            <button className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-400 cursor-not-allowed">
-              &lt;
-            </button>
-            <button className="px-3 py-1 rounded-lg bg-brand-600 text-white font-bold">
-              1
-            </button>
-            <button className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-400 cursor-not-allowed">
-              &gt;
-            </button>
-          </div>
+          <span>Showing {filteredCustomers.length} of {customers.length} customers</span>
         </div>
       </div>
 
@@ -151,6 +147,33 @@ export const Customers = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
       />
+
+      {/* Delete customer confirmation */}
+      <DeleteConfirmModal
+        isOpen={!!customerToDelete}
+        onClose={() => setCustomerToDelete(null)}
+        onConfirm={async () => {
+          const name = customerToDelete?.name;
+          const res = await deleteCustomer(customerToDelete.id);
+          if (res?.success) showNotice('success', `${name}'s account was deleted.`);
+          else showNotice('error', res?.message || 'Could not delete the customer.');
+        }}
+        title="Delete customer"
+        itemName={customerToDelete?.name}
+        message="Their personal details are removed and they can no longer sign in. Past orders stay in the records without their name."
+        confirmLabel="Delete customer"
+      />
+      {notice && (
+        <div
+          role="status"
+          className={`fixed bottom-6 right-6 left-6 sm:left-auto z-50 px-4 py-3 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 ${
+            notice.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+          }`}
+        >
+          {notice.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+          <span>{notice.text}</span>
+        </div>
+      )}
     </div>
   );
 };

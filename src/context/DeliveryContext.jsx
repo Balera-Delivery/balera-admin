@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { initialStats, initialCustomers, initialRiders, initialDeliveries, initialPayments } from '../data/mockData';
 import { dashboardApi } from '../api/services/dashboardApi';
 import { customerApi } from '../api/services/customerApi';
 import { riderApi } from '../api/services/riderApi';
@@ -54,18 +53,17 @@ export const normalizeRiderAccountStatus = (s) => {
 const formatBackendDelivery = (d, i = 0) => {
   if (!d) return null;
 
-  const safeNum = (val, fallback) => {
-    const n = Number(val);
-    return (!isNaN(n) && n !== 0) ? n : fallback;
+  // Real coordinates only (a point is left out when the server has none)
+  const point = (lat, lng) => {
+    const a = Number(lat);
+    const b = Number(lng);
+    return Number.isFinite(a) && Number.isFinite(b) && a !== 0 && b !== 0 ? [a, b] : null;
   };
+  const pickupPoint = point(d.pickupLatitude, d.pickupLongitude);
+  const destPoint = point(d.destinationLatitude, d.destinationLongitude);
 
-  const pickupLat = safeNum(d.pickupLatitude, 9.0054);
-  const pickupLng = safeNum(d.pickupLongitude, 38.7885);
-  const destLat = safeNum(d.destinationLatitude, 9.0345);
-  const destLng = safeNum(d.destinationLongitude, 38.7512);
-
-  // Extract OTP safely
-  let otpCodeString = '4829';
+  // Real OTP only (never show a made-up code)
+  let otpCodeString = null;
   if (d.otp && typeof d.otp === 'object' && d.otp.otpCode) {
     otpCodeString = String(d.otp.otpCode);
   } else if (d.otpCode) {
@@ -96,57 +94,6 @@ const formatBackendDelivery = (d, i = 0) => {
 
   const combinedText = `${d.pickupLocation || ''} ${d.itemDescription || ''} ${d.itemType || ''}`;
 
-  // Smart restaurant discovery from text if not explicitly joined
-  if (!restaurant) {
-    const hotelPatterns = [
-      { name: "Sana'a Restaurant", aliases: ["Sana'a", "Sanaa", "SANA'A RESTAURANT"], category: "Traditional Yemeni & Ethiopian", address: "Bale Robe, Commercial St", phone1: "+251 91 222 3344", phone2: "" },
-      { name: "Green Caffee Restaurant", aliases: ["Green Coffee", "Green Cafe"], category: "Cafe & Restaurant", address: "Main Commercial Ave, Bale Robe", phone1: "+251 91 100 2233", phone2: "" },
-      { name: "Bale Mountain Lodge Hotel", aliases: ["Bale Mountain", "Mountain Lodge"], category: "Luxury Hotel & Restaurant", address: "Bale National Park, Rira", phone1: "+251 92 333 4455", phone2: "" },
-      { name: "Wabe Shebele Hotel", aliases: ["Wabe Shebele"], category: "Hotel & Dining", address: "Central Square, Bale Robe", phone1: "+251 93 444 5566", phone2: "" },
-      { name: "Goba Ras Hotel", aliases: ["Goba Ras", "Ras Hotel"], category: "Heritage Hotel & Kitchen", address: "Goba Road, Bale", phone1: "+251 94 555 6677", phone2: "" },
-      { name: "Orchide Hotel & Restaurant", aliases: ["Orchide", "Orchid"], category: "Hotel & Restaurant", address: "Airport Road, Bale Robe", phone1: "+251 95 666 7788", phone2: "" },
-      { name: "Tullu Dimtu View Restaurant", aliases: ["Tullu Dimtu"], category: "Panoramic Restaurant", address: "Viewpoint Hill, Bale Robe", phone1: "+251 96 777 8899", phone2: "" },
-      { name: "Sof Omar Traditional Kitchen", aliases: ["Sof Omar"], category: "Traditional Cultural Cuisine", address: "Heritage Ave, Bale Robe", phone1: "+251 97 888 9900", phone2: "" },
-      { name: "Bale Star Fast Food & Cafe", aliases: ["Bale Star"], category: "Fast Food & Cafe", address: "University Ave, Bale Robe", phone1: "+251 98 999 0011", phone2: "" },
-      { name: "Dallo Cafe & Pastry", aliases: ["Dallo"], category: "Pastry & Coffee Bar", address: "Market Square, Bale Robe", phone1: "+251 99 000 1122", phone2: "" },
-    ];
-
-    const matched = hotelPatterns.find(h => 
-      combinedText.toLowerCase().includes(h.name.toLowerCase()) ||
-      h.aliases.some(a => combinedText.toLowerCase().includes(a.toLowerCase()))
-    );
-
-    if (matched) {
-      restaurant = {
-        id: matched.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        code: `HTL-${matched.name.substring(0, 3).toUpperCase()}`,
-        name: matched.name,
-        category: matched.category,
-        address: matched.address,
-        phone1: matched.phone1,
-        phone2: matched.phone2,
-        rating: 4.8,
-        deliveryFee: 60,
-      };
-    } else if (/restaurant|hotel|caffee|cafe|lodge|kitchen/i.test(combinedText)) {
-      // Extract restaurant name after dash or from pickup
-      const nameMatch = d.itemDescription?.match(/-\s*([A-Za-z0-9\s'&]+(?:Restaurant|Hotel|Cafe|Lodge|Kitchen)?)/i) ||
-                         d.pickupLocation?.match(/([A-Za-z0-9\s'&]+(?:Restaurant|Hotel|Cafe|Lodge|Kitchen))/i);
-      const extractedName = nameMatch ? nameMatch[1].trim() : (d.pickupLocation || 'Partner Food Establishment');
-      restaurant = {
-        id: 'partner-hotel',
-        code: 'HTL-PAR',
-        name: extractedName,
-        category: 'Partner Food Establishment',
-        address: d.pickupLocation || 'Bale Robe, Ethiopia',
-        phone1: '',
-        phone2: '',
-        rating: 4.8,
-        deliveryFee: 60,
-      };
-    }
-  }
-
   // Parse items from text if orderItems array is empty (e.g. "2x Faxiraa (600 Birr) - SANA'A RESTAURANT")
   if (orderItems.length === 0 && d.itemDescription) {
     const dishMatch = d.itemDescription.match(/(\d+)\s*x\s*([^(]+?)(?:\s*\((?:ETB\s*|Birr\s*)?(\d+(?:\.\d+)?)\s*(?:Birr|ETB)?\))?(?:\s*-\s*(.+))?$/i);
@@ -154,7 +101,7 @@ const formatBackendDelivery = (d, i = 0) => {
       const qty = parseInt(dishMatch[1], 10) || 1;
       const itemName = dishMatch[2].trim();
       const rawTotal = dishMatch[3] ? parseFloat(dishMatch[3]) : 0;
-      const unitPrice = rawTotal > 0 ? (rawTotal / qty) : 300;
+      const unitPrice = rawTotal > 0 ? (rawTotal / qty) : 0;
       orderItems = [{
         id: `dish-1`,
         name: itemName,
@@ -182,50 +129,82 @@ const formatBackendDelivery = (d, i = 0) => {
 
   const deliveryFee = d.order?.deliveryFee !== undefined
     ? Number(d.order.deliveryFee)
-    : (restaurant?.deliveryFee ? Number(restaurant.deliveryFee) : Number(d.fee || 60));
+    : (restaurant?.deliveryFee ? Number(restaurant.deliveryFee) : Number(d.fee || 0));
 
-  const totalAmount = d.order?.totalAmount !== undefined
+  const legacyTotal = d.order?.totalAmount !== undefined
     ? Number(d.order.totalAmount)
-    : (subtotal > 0 ? (subtotal + deliveryFee) : (Number(d.amount ? String(d.amount).replace(/[^0-9.]/g, '') : 60) || 60));
+    : (subtotal > 0 ? (subtotal + deliveryFee) : (Number(d.amount ? String(d.amount).replace(/[^0-9.]/g, '') : 0) || 0));
+  // Server-calculated checkout total (new orders) is what the customer actually paid.
+  const totalAmount = d.totalAmount != null ? Number(d.totalAmount) : legacyTotal;
+  const discount = Number(d.discount ?? d.order?.discount ?? 0) || 0;
+  const promoCode = d.promoCode || d.order?.promoCode || null;
+
+  // Pickup stops: one entry per restaurant in the order (multi-restaurant carts),
+  // each with its dishes and subtotal. Older orders fall back to the order's single restaurant.
+  const stopMap = new Map();
+  for (const it of orderItems) {
+    const r = it.restaurant || null;
+    const name = it.restaurantName || r?.name || restaurant?.name || 'Partner Restaurant';
+    const key = it.restaurantId || r?.id || name;
+    if (!stopMap.has(key)) {
+      stopMap.set(key, {
+        restaurantId: it.restaurantId || r?.id || restaurant?.id || null,
+        name,
+        address: r?.address || (stopMap.size === 0 ? restaurant?.address : '') || '',
+        phone: r?.phone1 || (stopMap.size === 0 ? restaurant?.phone1 : '') || '',
+        items: [],
+        subtotal: 0,
+      });
+    }
+    const stop = stopMap.get(key);
+    const lineTotal = Number(it.subtotal ?? (Number(it.price || 0) * Number(it.quantity || 1))) || 0;
+    stop.items.push({ name: it.name || it.foodItem?.name || 'Dish', quantity: Number(it.quantity || 1), price: Number(it.price || 0), subtotal: lineTotal, notes: it.notes || '' });
+    stop.subtotal += lineTotal;
+  }
+  const pickupStops = [...stopMap.values()];
 
   return {
     id: displayId,
     backendId: d.id,
     trackingNumber: d.trackingNumber || d.trackingCode || d.id,
     customerId: d.customerId,
-    customerName: d.customer?.fullName || d.customerName || 'Valued Customer',
-    customerPhone: d.customer?.phoneNumber || d.customerPhone || '+251 91 100 0000',
-    pickupLocation: d.pickupLocation || (restaurant ? `${restaurant.name}, ${restaurant.address}` : 'Bole, Addis Ababa'),
-    pickupAddressDetail: d.pickupAddressDetail || d.pickupLocation || 'Addis Ababa',
-    destination: d.destination || 'Piassa, Addis Ababa',
-    destinationAddressDetail: d.destinationAddressDetail || d.destination || 'Addis Ababa',
+    customerName: d.customer?.fullName || d.customerName || 'Customer',
+    customerPhone: d.customer?.phoneNumber || d.customerPhone || '',
+    pickupLocation: d.pickupLocation || (restaurant ? `${restaurant.name}${restaurant.address ? `, ${restaurant.address}` : ''}` : '—'),
+    pickupAddressDetail: d.pickupAddressDetail || d.pickupLocation || '',
+    destination: d.destination || '—',
+    destinationAddressDetail: d.destinationAddressDetail || d.destination || '',
     status: normalizeDeliveryStatus(d.status),
     riderId: d.riderId || d.rider?.id || null,
     riderName: d.rider?.fullName || d.riderName || null,
     riderPhone: d.rider?.phoneNumber || d.riderPhone || null,
     riderVehicle: d.rider?.vehicleInfo || d.riderVehicle || null,
-    time: d.createdAt ? new Date(d.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM',
-    date: d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today',
+    time: d.createdAt ? new Date(d.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+    date: d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+    createdAtRaw: d.createdAt || null,
+    finishedAtRaw: d.completedAt || d.deliveredAt || d.updatedAt || null,
     itemType: d.itemType || (isFoodOrder ? 'Food' : 'Package'),
     itemDescription: d.itemDescription || (isFoodOrder && restaurant ? `Food Order from ${restaurant.name}` : 'Package Delivery'),
-    receiverName: d.receiverName || 'Recipient',
-    receiverPhone: d.receiverPhone || '+251 92 200 0000',
+    receiverName: d.receiverName || '',
+    receiverPhone: d.receiverPhone || '',
     specialInstructions: d.specialInstructions || '',
     amount: `ETB ${totalAmount.toFixed(2)}`,
-    fee: deliveryFee,
+    fee: d.deliveryFee != null ? Number(d.deliveryFee) : deliveryFee,
     subtotal: subtotal,
     totalAmount: totalAmount,
+    discount,
+    promoCode,
+    // Every restaurant the rider must pick up from (with dishes & subtotal)
+    pickupStops,
     otp: otpCodeString,
     // Payment and uploaded receipt
     paymentMethod,
     paymentStatus,
     receiptUrl,
-    routeCoordinates: [
-      [pickupLat, pickupLng],
-      [destLat, destLng]
-    ],
-    riderPosition: d.rider?.latitude ? [Number(d.rider.latitude), Number(d.rider.longitude)] : null,
-    distance: d.distanceKm ? `${d.distanceKm} km` : '5.8 km',
+    // Only real map points (empty when the server has no coordinates)
+    routeCoordinates: pickupPoint && destPoint ? [pickupPoint, destPoint] : [pickupPoint, destPoint].filter(Boolean),
+    riderPosition: point(d.rider?.currentLatitude ?? d.rider?.latitude, d.rider?.currentLongitude ?? d.rider?.longitude),
+    distance: d.distanceKm ? `${d.distanceKm} km` : null,
     statusLogs: Array.isArray(d.statusLogs) ? d.statusLogs : [],
     // Rich Food & Restaurant metadata
     isFoodOrder,
@@ -239,10 +218,10 @@ const formatBackendDelivery = (d, i = 0) => {
       cuisineType: restaurant.cuisineType || 'Local & Traditional',
       phone1: restaurant.phone1 || '',
       phone2: restaurant.phone2 || '',
-      address: restaurant.address || 'Bale Robe, Ethiopia',
-      rating: restaurant.rating || 4.8,
-      deliveryFee: restaurant.deliveryFee || 60,
-      deliveryTime: restaurant.deliveryTime || '25 - 40 min',
+      address: restaurant.address || '',
+      rating: restaurant.rating ?? null,
+      deliveryFee: restaurant.deliveryFee ?? null,
+      deliveryTime: restaurant.deliveryTime || '',
       banner: restaurant.banner || '',
       avatar: restaurant.avatar || '',
       status: restaurant.status || 'Active',
@@ -262,20 +241,46 @@ const formatBackendDelivery = (d, i = 0) => {
   };
 };
 
+// Payout row from the server -> what the Rider Payments page shows.
+// The reference is saved as "Method | Reference" when the admin records a payout.
+const formatPayout = (p) => {
+  const [method, ref] = String(p.reference || '').includes(' | ')
+    ? p.reference.split(' | ')
+    : ['—', p.reference || '—'];
+  const amountNum = Number(p.amount) || 0;
+  return {
+    id: p.id,
+    riderId: p.riderId,
+    riderName: p.riderName,
+    riderPhone: p.riderPhone,
+    amountNum,
+    amount: `ETB ${amountNum.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+    paymentMethod: method,
+    referenceNumber: ref,
+    totalDeliveries: p.deliveriesCount,
+    period: p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+    status: 'Paid',
+  };
+};
+
 export const DeliveryProvider = ({ children }) => {
-  const [customers, setCustomers] = useState(initialCustomers);
-  const [riders, setRiders] = useState(initialRiders);
-  const [deliveries, setDeliveries] = useState(initialDeliveries);
-  const [payments, setPayments] = useState(initialPayments);
+  // Lists start empty and are filled only with real data from the server
+  const [customers, setCustomers] = useState([]);
+  const [riders, setRiders] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
+  const [payments, setPayments] = useState([]); // payout history (real, from the server)
+  const [payoutsSummary, setPayoutsSummary] = useState([]); // earnings / paid / owed per rider
   const [backendStatus, setBackendStatus] = useState({ isOnline: false, checking: true });
 
   const [settings, setSettings] = useState({
-    companyName: 'Balerra Delivery Service',
-    companyEmail: 'info@balerra.com',
-    companyPhone: '+251 911 234 567',
-    defaultDeliveryFee: 100,
+    companyName: '',
+    companyEmail: '',
+    companyPhone: '',
+    // Pricing settings used by the backend PricingService (keys must match the backend)
+    delivery_fee: 100,
+    extra_stop_fee: 30,
     currency: 'ETB - Ethiopian Birr',
-    city: 'Bale / Addis Ababa, Ethiopia',
+    city: '',
     operatingHours: '06:00 AM - 10:00 PM',
     autoAssignRider: false,
     requireOtpVerification: true,
@@ -297,50 +302,49 @@ export const DeliveryProvider = ({ children }) => {
       // 1. Fetch Deliveries
       const delivRes = await deliveryApi.getDeliveries({ limit: 100 });
       const backendDeliveries = delivRes.deliveries || delivRes.data?.deliveries || delivRes.data;
-      if (Array.isArray(backendDeliveries) && backendDeliveries.length > 0) {
+      if (Array.isArray(backendDeliveries)) {
         setDeliveries(backendDeliveries.map((d, i) => formatBackendDelivery(d, i)));
       }
 
       // 2. Fetch Customers
       const custRes = await customerApi.getCustomers({ limit: 100 });
       const backendCustomers = custRes.customers || custRes.data?.customers || custRes.data;
-      if (Array.isArray(backendCustomers) && backendCustomers.length > 0) {
+      if (Array.isArray(backendCustomers)) {
         setCustomers(backendCustomers.map((c, i) => ({
           id: c.id || `CUS-${String(i+1).padStart(3, '0')}`,
           name: c.fullName || c.name,
           phone: c.phoneNumber || c.phone,
-          email: c.email || `${c.phoneNumber}@balerra.com`,
-          address: c.address || 'Addis Ababa, Ethiopia',
+          email: c.email || '',
+          address: c.address || '',
           totalDeliveries: c.totalDeliveries || c._count?.deliveries || 0,
           completedDeliveries: c.completedDeliveries || 0,
           cancelledDeliveries: c.cancelledDeliveries || 0,
           inProgressDeliveries: c.inProgressDeliveries || 0,
           status: c.status === 'SUSPENDED' ? 'Inactive' : 'Active',
-          joinedDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Jan 12, 2024',
-          avatar: c.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+          joinedDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+          createdAtRaw: c.createdAt || null,
         })));
       }
 
       // 3. Fetch Riders
       const riderRes = await riderApi.getRiders({ limit: 100 });
       const backendRiders = riderRes.riders || riderRes.data?.riders || riderRes.data;
-      if (Array.isArray(backendRiders) && backendRiders.length > 0) {
+      if (Array.isArray(backendRiders)) {
         setRiders(backendRiders.map((r, i) => ({
           id: r.id || `RID-${String(i+1).padStart(3, '0')}`,
           name: r.fullName || r.name,
           phone: r.phoneNumber || r.phone,
           email: r.email,
-          vehicle: r.vehicleInfo || r.vehicle || 'TVS Motorcycle',
-          licensePlate: r.licensePlate || 'AB-12345',
+          vehicle: (r.vehicleInfo || r.vehicle || '—').split(' Plate ')[0],
+          licensePlate: r.licensePlate || (r.vehicleInfo || '').split(' Plate ')[1] || '',
           status: r.availabilityStatus === 'ONLINE' || r.status === 'Online' ? 'Online' : 'Offline',
-          accountStatus: normalizeRiderAccountStatus(r.accountStatus),
-          totalDeliveries: r.totalDeliveries || 0,
+          accountStatus: r.isDeactivated ? 'Deactivated' : normalizeRiderAccountStatus(r.accountStatus),
+          totalDeliveries: r.totalDeliveries || r._count?.deliveries || 0,
           completedDeliveries: r.completedDeliveries || 0,
           cancelledDeliveries: r.cancelledDeliveries || 0,
           inProgressDeliveries: r.inProgressDeliveries || 0,
-          rating: r.rating || 4.8,
-          joinedDate: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Feb 15, 2024',
-          avatar: r.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+          joinedDate: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+          createdAtRaw: r.createdAt || null,
           currentLocation: [r.latitude || 9.0200, r.longitude || 38.7700],
           activeDeliveryId: r.activeDeliveryId || null,
         })));
@@ -350,7 +354,15 @@ export const DeliveryProvider = ({ children }) => {
       try {
         const settingsRes = await settingsApi.getSettings();
         if (settingsRes && settingsRes.data) {
-          setSettings(prev => ({ ...prev, ...settingsRes.data }));
+          // Backend returns rows [{ key, value }]; convert them to a { key: value } map.
+          const rows = settingsRes.data;
+          const loaded = Array.isArray(rows)
+            ? rows.reduce((acc, row) => {
+                if (row && row.key) acc[row.key] = row.value;
+                return acc;
+              }, {})
+            : rows;
+          setSettings(prev => ({ ...prev, ...loaded }));
         }
       } catch (e) {
         // settings fallback
@@ -418,18 +430,46 @@ export const DeliveryProvider = ({ children }) => {
     const completed = deliveries.filter(d => d.status === 'Completed').length;
     const cancelled = deliveries.filter(d => d.status === 'Cancelled').length;
 
+    // Real comparisons (no invented percentages)
+    const startOfDay = (offsetDays = 0) => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + offsetDays);
+      return d.getTime();
+    };
+    const today = startOfDay(0);
+    const yesterday = startOfDay(-1);
+    const tomorrow = startOfDay(1);
+    const inRange = (raw, from, to) => {
+      if (!raw) return false;
+      const t = new Date(raw).getTime();
+      return t >= from && t < to;
+    };
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+
+    const todayDeliveries = deliveries.filter(d => inRange(d.createdAtRaw, today, tomorrow)).length;
+    const yesterdayDeliveries = deliveries.filter(d => inRange(d.createdAtRaw, yesterday, today)).length;
+    const isDone = (d) => d.status === 'Completed';
+    const completedToday = deliveries.filter(d => isDone(d) && inRange(d.finishedAtRaw, today, tomorrow)).length;
+    const completedYesterday = deliveries.filter(d => isDone(d) && inRange(d.finishedAtRaw, yesterday, today)).length;
+    const newCustomersThisMonth = customers.filter(c => inRange(c.createdAtRaw, monthStart, tomorrow)).length;
+    const newRidersThisMonth = riders.filter(r => inRange(r.createdAtRaw, monthStart, tomorrow)).length;
+    const diff = (a, b) => (a - b > 0 ? `+${a - b}` : `${a - b}`);
+
     return {
-      totalCustomers: totalCustomers || 1248,
-      customerGrowth: '+12.5%',
-      totalRiders: totalRiders || 356,
+      totalCustomers,
+      newCustomersThisMonth,
+      totalRiders,
       onlineRiders: onlineRiders,
       offlineRiders: offlineRiders,
       pendingApprovalRiders,
-      riderGrowth: '+8.2%',
-      todayDeliveries: deliveries.length,
-      todayDeliveriesGrowth: '+18.3%',
-      completedToday: completed,
-      completedGrowth: '+15.7%',
+      newRidersThisMonth,
+      todayDeliveries,
+      todayDeliveriesChange: diff(todayDeliveries, yesterdayDeliveries),
+      todayDeliveriesUp: todayDeliveries >= yesterdayDeliveries,
+      completedToday,
+      completedTodayChange: diff(completedToday, completedYesterday),
+      completedTodayUp: completedToday >= completedYesterday,
       pendingCount: pending,
       assignedCount: assigned,
       inProgressCount: inProgress,
@@ -441,48 +481,41 @@ export const DeliveryProvider = ({ children }) => {
   // Customer Management APIs
   const addCustomer = async (customerData) => {
     try {
-      const res = await customerApi.createCustomer({
+      await customerApi.createCustomer({
         fullName: customerData.name,
         phoneNumber: customerData.phone,
-        email: customerData.email,
-        password: customerData.password || 'CustomerPass@123',
-        address: customerData.address,
+        email: customerData.email || undefined,
+        password: customerData.password, // set by the admin in the form (no built-in password)
+        address: customerData.address || undefined,
       });
-      const created = res.customer || res.data || {};
-      const newCustomer = {
-        id: created.id || `CUS-00${customers.length + 1}`,
-        name: customerData.name,
-        phone: customerData.phone,
-        email: customerData.email,
-        address: customerData.address,
-        totalDeliveries: 0,
-        completedDeliveries: 0,
-        cancelledDeliveries: 0,
-        inProgressDeliveries: 0,
-        status: 'Active',
-        joinedDate: 'Today',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      };
-      setCustomers(prev => [newCustomer, ...prev]);
-      return { success: true, customer: newCustomer };
-    } catch (err) {
-      const errMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create customer';
-      return { success: false, message: errMsg };
+    } catch (e) {
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
+    await syncWithBackend();
+    return { success: true };
   };
 
   const toggleCustomerStatus = async (id) => {
     const currentCust = customers.find(c => c.id === id);
     const nextStatus = currentCust?.status === 'Active' ? 'Inactive' : 'Active';
-    const apiStatus = nextStatus === 'Active' ? 'ACTIVE' : 'SUSPENDED';
-
     try {
-      await customerApi.updateCustomerStatus(id, apiStatus);
+      await customerApi.updateCustomerStatus(id, nextStatus === 'Active' ? 'ACTIVE' : 'SUSPENDED');
     } catch (e) {
-      console.warn('Backend updateCustomerStatus notice:', e.message);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
-
     setCustomers(prev => prev.map(c => c.id === id ? { ...c, status: nextStatus } : c));
+    return { success: true, status: nextStatus };
+  };
+
+  // Removes the customer's personal data on the server (their past orders are kept anonymously)
+  const deleteCustomer = async (id) => {
+    try {
+      await customerApi.deleteCustomer(id);
+    } catch (e) {
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
+    }
+    setCustomers(prev => prev.filter(c => c.id !== id));
+    return { success: true };
   };
 
   // Rider Management APIs
@@ -493,30 +526,11 @@ export const DeliveryProvider = ({ children }) => {
         email: riderData.email,
         phoneNumber: riderData.phone,
         password: riderData.password,
-        vehicleInfo: `${riderData.vehicle} Plate ${riderData.licensePlate || 'AB-12345'}`,
+        vehicleInfo: riderData.licensePlate ? `${riderData.vehicle} Plate ${riderData.licensePlate}` : riderData.vehicle,
       });
       const created = res.data?.rider || res.data || res.rider || {};
-      const newRider = {
-        id: created.id || `RID-00${riders.length + 1}`,
-        name: riderData.name,
-        phone: riderData.phone,
-        email: riderData.email,
-        vehicle: riderData.vehicle,
-        licensePlate: riderData.licensePlate || 'AB-12345',
-        status: 'Offline',
-        accountStatus: 'Active',
-        totalDeliveries: 0,
-        completedDeliveries: 0,
-        cancelledDeliveries: 0,
-        inProgressDeliveries: 0,
-        rating: 5.0,
-        joinedDate: 'Today',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-        currentLocation: [9.0200, 38.7600],
-        activeDeliveryId: null,
-      };
-      setRiders(prev => [newRider, ...prev]);
-      setTimeout(syncWithBackend, 400);
+      const newRider = created;
+      await syncWithBackend();
       return { success: true, rider: newRider };
     } catch (err) {
       console.error('Backend createRider error:', err.response?.data || err.message);
@@ -530,54 +544,70 @@ export const DeliveryProvider = ({ children }) => {
     try {
       await riderApi.approveRider(id);
     } catch (e) {
-      console.warn('Backend approveRider notice:', e.message);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
-
     setRiders(prev => prev.map(r => r.id === id ? { ...r, accountStatus: 'Active' } : r));
     setTimeout(syncWithBackend, 400);
-    return true;
+    return { success: true };
   };
 
+  // Suspend an active rider, or make a suspended rider active again
   const toggleRiderActive = async (id) => {
     const rider = riders.find(r => r.id === id);
-    const nextStatus = rider?.accountStatus === 'Active' ? 'Suspended' : 'Active';
-    const apiStatus = nextStatus === 'Active' ? 'ACTIVE' : 'SUSPENDED';
-
+    if (!rider) return { success: false, message: 'Rider not found.' };
+    const nextStatus = rider.accountStatus === 'Active' ? 'Suspended' : 'Active';
     try {
-      if (rider?.accountStatus === 'Pending Approval') {
-        await riderApi.approveRider(id);
-      } else {
-        await riderApi.updateRiderStatus(id, apiStatus);
-      }
+      if (rider.accountStatus === 'Pending Approval') await riderApi.approveRider(id);
+      else await riderApi.updateRiderStatus(id, nextStatus === 'Active' ? 'ACTIVE' : 'SUSPENDED');
     } catch (e) {
-      console.warn('Backend updateRiderStatus notice:', e.message);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
-
-    setRiders(prev => prev.map(r => r.id === id ? { ...r, accountStatus: nextStatus } : r));
+    setRiders(prev => prev.map(r => r.id === id
+      ? { ...r, accountStatus: nextStatus, status: nextStatus === 'Suspended' ? 'Offline' : r.status }
+      : r));
+    return { success: true, status: nextStatus };
   };
 
+  // Deactivate an active rider, or activate a deactivated one again (saved on the server).
   const toggleRiderDeactivation = async (id) => {
+    const rider = riders.find(r => r.id === id);
+    if (!rider) return { success: false, message: 'Rider not found.' };
+    const deactivate = rider.accountStatus !== 'Deactivated';
     try {
-      await riderApi.toggleDeactivation(id);
+      await riderApi.toggleDeactivation(id, deactivate);
     } catch (e) {
-      console.warn('Backend toggleDeactivation notice:', e.message);
+      return { success: false, message: e.response?.data?.message || e.message };
     }
-    setRiders(prev => prev.map(r => {
-      if (r.id === id) {
-        const isDeact = r.accountStatus === 'Deactivated' || r.accountStatus === 'Suspended';
-        return { ...r, accountStatus: isDeact ? 'Active' : 'Deactivated' };
-      }
-      return r;
-    }));
+    setRiders(prev => prev.map(r => r.id === id
+      ? { ...r, accountStatus: deactivate ? 'Deactivated' : 'Active', status: deactivate ? 'Offline' : r.status }
+      : r));
+    return { success: true, deactivated: deactivate };
   };
 
+  // Save rider details with the field names the server expects, then the account status if it changed
   const editRider = async (id, updatedData) => {
+    const rider = riders.find(r => r.id === id);
+    if (!rider) return { success: false, message: 'Rider not found.' };
+    const plate = (updatedData.licensePlate || '').trim();
     try {
-      await riderApi.updateRider(id, updatedData);
+      await riderApi.updateRider(id, {
+        fullName: updatedData.name,
+        phoneNumber: updatedData.phone,
+        vehicleInfo: plate ? `${updatedData.vehicle} Plate ${plate}` : updatedData.vehicle,
+      });
+      const want = updatedData.accountStatus;
+      if (want && want !== rider.accountStatus) {
+        if (want === 'Deactivated') {
+          await riderApi.toggleDeactivation(id, true);
+        } else {
+          if (rider.accountStatus === 'Deactivated') await riderApi.toggleDeactivation(id, false);
+          await riderApi.updateRiderStatus(id, want === 'Active' ? 'ACTIVE' : 'SUSPENDED');
+        }
+      }
     } catch (e) {
-      console.warn('Backend updateRider notice:', e.message);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
-    setRiders(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+    await syncWithBackend();
     return { success: true };
   };
 
@@ -585,96 +615,82 @@ export const DeliveryProvider = ({ children }) => {
     try {
       await riderApi.deleteRider(id);
     } catch (e) {
-      console.warn('Backend deleteRider notice:', e.message);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
     setRiders(prev => prev.filter(r => r.id !== id));
     return { success: true };
   };
 
-  const [payoutsSummary, setPayoutsSummary] = useState([]);
-  const fetchPayouts = async () => {
+  const fetchPayouts = useCallback(async () => {
     try {
-      const res = await riderApi.getPayoutsSummary();
-      if (res && res.data) {
-        setPayoutsSummary(res.data);
-      }
+      const [summaryRes, historyRes] = await Promise.all([
+        riderApi.getPayoutsSummary(),
+        riderApi.getPayoutHistory(),
+      ]);
+      if (Array.isArray(summaryRes?.data)) setPayoutsSummary(summaryRes.data);
+      if (Array.isArray(historyRes?.data)) setPayments(historyRes.data.map(formatPayout));
     } catch (e) {
-      console.warn('Backend getPayoutsSummary notice:', e.message);
+      console.warn('Backend payouts notice:', e.message);
     }
-  };
+  }, []);
 
+  // Load payouts when the admin opens, then refresh them every 30 seconds
+  useEffect(() => {
+    fetchPayouts();
+    const t = setInterval(fetchPayouts, 30000);
+    return () => clearInterval(t);
+  }, [fetchPayouts]);
+
+  // Settle all unpaid completed deliveries of a rider (saved on the server)
   const markRiderPaidFromApi = async (riderId, paymentData) => {
-    try {
-      await riderApi.markRiderPaid(riderId, paymentData);
-      await fetchPayouts();
-    } catch (e) {
-      console.warn('Backend markRiderPaid notice:', e.message);
+    const method = paymentData.paymentMethod || 'Telebirr';
+    const ref = (paymentData.reference || '').trim() || `PAY-${Date.now()}`;
+    const res = await riderApi.markRiderPaid(riderId, { payoutReference: `${method} | ${ref}` });
+    if (!res?.data?.count) {
+      throw new Error(res?.data?.message || 'This rider has no unpaid completed deliveries.');
     }
-    setPayments(prev => [
-      {
-        id: `PAY-${Date.now()}`,
-        riderId,
-        riderName: paymentData.riderName || 'Rider',
-        amount: `ETB ${paymentData.amount}`,
-        amountNum: Number(paymentData.amount) || 0,
-        status: 'Paid',
-        totalDeliveries: paymentData.totalDeliveries || 1,
-        period: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-        paymentMethod: paymentData.paymentMethod || 'Telebirr',
-        referenceNumber: paymentData.reference || `REF-${Date.now()}`
-      },
-      ...prev
-    ]);
+    await fetchPayouts();
+    return res.data;
   };
 
-  const toggleRiderOnline = (id) => {
-    setRiders(prev => prev.map(r => r.id === id ? { ...r, status: r.status === 'Online' ? 'Offline' : 'Online' } : r));
+  // Set a rider Online / Offline and save it, so the auto-refresh doesn't switch it back.
+  const toggleRiderOnline = async (id) => {
+    const rider = riders.find(r => r.id === id);
+    if (!rider) return { success: false, message: 'Rider not found.' };
+    const next = rider.status === 'Online' ? 'Offline' : 'Online';
+    setRiders(prev => prev.map(r => r.id === id ? { ...r, status: next } : r));
+    try {
+      await riderApi.setAvailability(id, next.toUpperCase());
+      return { success: true, status: next };
+    } catch (e) {
+      // Undo on failure (e.g. a suspended or deactivated rider can't go online)
+      setRiders(prev => prev.map(r => r.id === id ? { ...r, status: rider.status } : r));
+      return { success: false, message: e.response?.data?.message || e.message };
+    }
   };
 
-  // Delivery Dispatch & Assignment APIs
+  // Delivery Dispatch & Assignment APIs (shown only after the server saves it)
   const assignRider = async (deliveryId, riderId) => {
     const selectedRider = riders.find(r => r.id === riderId);
-    if (!selectedRider) return false;
-
+    if (!selectedRider) return { success: false, message: 'Rider not found.' };
     try {
       await deliveryApi.assignRider(deliveryId, riderId);
     } catch (e) {
-      console.warn('Backend assignRider notice, updating local state:', e.message);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
-
-    setDeliveries(prev => prev.map(d => {
-      if (d.id === deliveryId || d.backendId === deliveryId) {
-        return {
-          ...d,
-          status: 'Assigned',
-          riderId: selectedRider.id,
-          riderName: selectedRider.name,
-          riderPhone: selectedRider.phone,
-          riderVehicle: selectedRider.vehicle,
-          riderPosition: selectedRider.currentLocation,
-        };
-      }
-      return d;
-    }));
-
-    setRiders(prev => prev.map(r => {
-      if (r.id === riderId) {
-        return { ...r, activeDeliveryId: deliveryId };
-      }
-      return r;
-    }));
-
-    // Trigger sync to get updated statusLogs from backend
+    setDeliveries(prev => prev.map(d => (d.id === deliveryId || d.backendId === deliveryId)
+      ? { ...d, status: 'Assigned', riderId: selectedRider.id, riderName: selectedRider.name, riderPhone: selectedRider.phone, riderVehicle: selectedRider.vehicle }
+      : d));
     setTimeout(syncWithBackend, 500);
-
-    return true;
+    return { success: true };
   };
 
   const cancelDelivery = async (deliveryId, reason = 'Cancelled by Admin') => {
     try {
       await deliveryApi.cancelDelivery(deliveryId, reason);
     } catch (e) {
-      console.warn('Backend cancelDelivery notice:', e.message);
+      // Don't show "Cancelled" if the server didn't cancel it
+      return { success: false, message: e.response?.data?.message || e.message };
     }
 
     setDeliveries(prev => prev.map(d => {
@@ -685,56 +701,37 @@ export const DeliveryProvider = ({ children }) => {
     }));
 
     setTimeout(syncWithBackend, 500);
+    return { success: true };
   };
 
+  // Admin moves a delivery forward (support override). Shown only after the server saves it.
   const changeDeliveryStatus = async (deliveryId, newStatus, notes = '') => {
-    // 1. Optimistic local state update
-    setDeliveries(prev => prev.map(d => {
-      if (d.id === deliveryId || d.backendId === deliveryId) {
-        return { ...d, status: newStatus };
-      }
-      return d;
-    }));
-
-    // 2. Persist to backend and notify rider + customer apps
     try {
       await deliveryApi.updateDeliveryStatus(deliveryId, newStatus, notes);
     } catch (e) {
-      console.warn('Backend updateDeliveryStatus notice:', e.message);
+      return { success: false, message: e.response?.data?.message || e.message };
     }
-
-    // 3. Resync fresh data from backend
+    setDeliveries(prev => prev.map(d =>
+      (d.id === deliveryId || d.backendId === deliveryId) ? { ...d, status: newStatus } : d));
     setTimeout(syncWithBackend, 500);
+    return { success: true };
   };
 
-  // Payments
-  const addPayment = (paymentData) => {
-    const nextId = `PAY-00${payments.length + 1}`;
-    const newPayment = {
-      id: nextId,
-      status: 'Paid',
-      paymentDate: 'Today',
-      period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-      ...paymentData
-    };
-    setPayments(prev => [newPayment, ...prev]);
-    return newPayment;
-  };
-
-  const markPaymentPaid = (id) => {
-    setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'Paid', paymentDate: 'Today' } : p));
-  };
-
-  // Settings
+  // Settings: save only the values the admin changed (empty fields are skipped), one by one;
+  // stops at the first failure and reports it
   const updateSettings = async (newSettings) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
+    const changed = Object.entries(newSettings).filter(([key, value]) =>
+      value !== undefined && value !== null && String(value).trim() !== '' &&
+      String(value) !== String(settings[key] ?? ''));
     try {
-      for (const [key, value] of Object.entries(newSettings)) {
-        await settingsApi.updateSetting(key, String(value));
+      for (const [key, value] of changed) {
+        await settingsApi.updateSetting(key, String(value).trim());
       }
     } catch (e) {
-      console.warn('Backend updateSettings notice:', e.message);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
+    setSettings(prev => ({ ...prev, ...Object.fromEntries(changed) }));
+    return { success: true, saved: changed.length };
   };
 
   // Update & Verify Payment Status
@@ -742,21 +739,12 @@ export const DeliveryProvider = ({ children }) => {
     try {
       await deliveryApi.updatePaymentStatus(deliveryId, paymentStatus);
     } catch (e) {
-      console.warn('Backend updatePaymentStatus notice:', e.message);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
-
-    setDeliveries(prev => prev.map(d => {
-      if (d.id === deliveryId || d.backendId === deliveryId || d.trackingNumber === deliveryId) {
-        return {
-          ...d,
-          paymentStatus,
-        };
-      }
-      return d;
-    }));
-
+    setDeliveries(prev => prev.map(d =>
+      (d.id === deliveryId || d.backendId === deliveryId || d.trackingNumber === deliveryId) ? { ...d, paymentStatus } : d));
     setTimeout(syncWithBackend, 500);
-    return true;
+    return { success: true };
   };
 
   return (
@@ -772,6 +760,7 @@ export const DeliveryProvider = ({ children }) => {
       fetchDeliveryById,
       addCustomer,
       toggleCustomerStatus,
+      deleteCustomer,
       addRider,
       approveRider,
       editRider,
@@ -786,8 +775,6 @@ export const DeliveryProvider = ({ children }) => {
       changeDeliveryStatus,
       cancelDelivery,
       updatePaymentStatus,
-      addPayment,
-      markPaymentPaid,
       updateSettings,
     }}>
       {children}

@@ -16,6 +16,8 @@ import { useHotels } from '../../context/HotelContext';
 export const AddPromotionModal = ({ isOpen, onClose, onAddPromotion }) => {
   const { hotels } = useHotels();
 
+  const [submitError, setSubmitError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [promotionType, setPromotionType] = useState('PROMO_CODE'); // PROMO_CODE, FREE_DELIVERY, PARTNER_DISCOUNT
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
@@ -71,7 +73,7 @@ export const AddPromotionModal = ({ isOpen, onClose, onAddPromotion }) => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -102,13 +104,22 @@ export const AddPromotionModal = ({ isOpen, onClose, onAddPromotion }) => {
       restaurant: selectedHotel ? { id: selectedHotel.id, name: selectedHotel.name, code: selectedHotel.code } : null
     };
 
-    onAddPromotion(newPromo);
-    onClose();
+    setSubmitError('');
+    setIsSaving(true);
+    const res = await onAddPromotion(newPromo);
+    setIsSaving(false);
+    if (res?.success) onClose();
+    else setSubmitError(res?.message || 'Could not create the promotion.');
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create Promotion" maxWidth="max-w-xl">
       <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[85vh] overflow-y-auto">
+        {submitError && (
+          <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700">
+            {submitError}
+          </div>
+        )}
         
         {/* Live Visual Ticket Preview */}
         <div className="bg-gradient-to-br from-[#0B2559] via-[#0A1E48] to-[#071329] border border-blue-900/50 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
@@ -464,9 +475,10 @@ export const AddPromotionModal = ({ isOpen, onClose, onAddPromotion }) => {
           </button>
           <button
             type="submit"
-            className="px-5 py-2.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-md shadow-brand-500/25 transition-all cursor-pointer"
+            disabled={isSaving}
+            className="px-5 py-2.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-md shadow-brand-500/25 transition-all cursor-pointer disabled:opacity-60"
           >
-            Create Promotion
+            {isSaving ? 'Creating…' : 'Create Promotion'}
           </button>
         </div>
       </form>

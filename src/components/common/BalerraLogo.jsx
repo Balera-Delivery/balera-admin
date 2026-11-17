@@ -13,7 +13,7 @@ export const BalerraLogo = ({ size = 'default', showText = true, className = '',
       {/* Circle Wolf Logo */}
       <div className={`relative ${sizeClasses[size] || sizeClasses.default} flex-shrink-0`}>
         <img 
-          src="/logo.svg" 
+          src="/balera_app_logo.png" 
           alt="Balerra Delivery" 
           className="w-full h-full object-contain drop-shadow-sm" 
         />

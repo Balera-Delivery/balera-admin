@@ -34,4 +34,10 @@ export const customerApi = {
     const res = await apiClient.patch(`/admin/customers/${id}/status`, { status });
     return res.data;
   },
+
+  // Delete a customer account (personal data removed; past orders kept anonymously)
+  deleteCustomer: async (id) => {
+    const res = await apiClient.delete(`/admin/customers/${id}`);
+    return res.data;
+  },
 };

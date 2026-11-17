@@ -29,6 +29,7 @@ import { EditFoodModal } from '../components/modals/EditFoodModal';
 import { EditHotelModal } from '../components/modals/EditHotelModal';
 import { EditHotelPhonesModal } from '../components/modals/EditHotelPhonesModal';
 import { DeleteConfirmModal } from '../components/modals/DeleteConfirmModal';
+import { BackButton } from '../components/common/BackButton';
 
 export const HotelDetails = () => {
   const { id } = useParams();
@@ -102,19 +103,13 @@ export const HotelDetails = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Breadcrumb Navigation */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/hotels')}
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-brand-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Hotels Directory</span>
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <BackButton fallback="/hotels" parentLabel="Partner Management" currentLabel={hotel.name} />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             onClick={() => setIsEditHotelOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-colors whitespace-nowrap"
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span>Edit Profile</span>
@@ -122,7 +117,7 @@ export const HotelDetails = () => {
 
           <button
             onClick={() => setIsDeleteHotelOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold shadow-2xs transition-colors whitespace-nowrap"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Delete Hotel</span>

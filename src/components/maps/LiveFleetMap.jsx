@@ -285,8 +285,10 @@ export const LiveFleetMap = ({
           {/* Render Active Deliveries & Couriers */}
           {activeDeliveries.map((delivery) => {
             const isSelected = delivery.id === selectedDeliveryId;
-            const pickup = delivery.routeCoordinates?.[0] || [9.0054, 38.7885];
-            const dest = delivery.routeCoordinates?.[delivery.routeCoordinates.length - 1] || [9.0345, 38.7512];
+            const pickup = delivery.routeCoordinates?.[0];
+            const dest = delivery.routeCoordinates?.[delivery.routeCoordinates.length - 1];
+            // No real coordinates for this order: nothing to draw
+            if (!pickup || !dest || delivery.routeCoordinates.length < 2) return null;
             const riderPos = delivery.riderPosition || pickup;
 
             return (

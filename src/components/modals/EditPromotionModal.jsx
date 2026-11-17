@@ -5,6 +5,8 @@ import { useHotels } from '../../context/HotelContext';
 export const EditPromotionModal = ({ isOpen, onClose, promotion, onUpdatePromotion }) => {
   const { hotels } = useHotels();
 
+  const [submitError, setSubmitError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -43,7 +45,7 @@ export const EditPromotionModal = ({ isOpen, onClose, promotion, onUpdatePromoti
 
   if (!promotion) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const updated = {
       ...promotion,
@@ -55,13 +57,22 @@ export const EditPromotionModal = ({ isOpen, onClose, promotion, onUpdatePromoti
       perUserLimit: Number(formData.perUserLimit) || 1
     };
 
-    onUpdatePromotion(updated);
-    onClose();
+    setSubmitError('');
+    setIsSaving(true);
+    const res = await onUpdatePromotion(updated);
+    setIsSaving(false);
+    if (res?.success) onClose();
+    else setSubmitError(res?.message || 'Could not save the promotion.');
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Edit Campaign: ${promotion.code}`} maxWidth="max-w-xl">
       <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        {submitError && (
+          <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700">
+            {submitError}
+          </div>
+        )}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">Campaign Title</label>
           <input
@@ -171,9 +182,10 @@ export const EditPromotionModal = ({ isOpen, onClose, promotion, onUpdatePromoti
           </button>
           <button
             type="submit"
-            className="px-5 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-xs"
+            disabled={isSaving}
+            className="px-5 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-xs disabled:opacity-60"
           >
-            Save Changes
+            {isSaving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </form>

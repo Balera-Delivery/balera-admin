@@ -10,47 +10,11 @@ export const apiClient = axios.create({
   timeout: 15000,
 });
 
-// Helper to auto-authenticate admin if token is missing
-let tokenPromise = null;
-const getOrFetchAdminToken = async () => {
-  let token = localStorage.getItem('balerra_admin_token');
-  if (token && !token.startsWith('demo-')) {
-    return token;
-  }
-
-  // Deduplicate concurrent token requests
-  if (!tokenPromise) {
-    tokenPromise = axios.post(`${API_BASE_URL}/auth/admin/login`, {
-      email: 'admin@balera.com',
-      password: 'AdminPassword@123'
-    }).then(res => {
-      const acquiredToken = res.data?.data?.token || res.data?.token;
-      if (acquiredToken) {
-        localStorage.setItem('balerra_admin_token', acquiredToken);
-        return acquiredToken;
-      }
-      return null;
-    }).catch(err => {
-      console.warn('Auto admin login notice:', err.message);
-      return null;
-    }).finally(() => {
-      tokenPromise = null;
-    });
-  }
-
-  return tokenPromise;
-};
-
-// Request Interceptor: Attach JWT Token
+// Request Interceptor: attach the admin's JWT (from a real sign-in only)
 apiClient.interceptors.request.use(
-  async (config) => {
-    // Skip token fetching for auth login and health routes
-    if (config.url?.includes('/auth/admin/login') || config.url?.includes('/health')) {
-      return config;
-    }
-
-    const token = await getOrFetchAdminToken();
-    if (token) {
+  (config) => {
+    const token = localStorage.getItem('balerra_admin_token');
+    if (token && !config.url?.includes('/auth/admin/login')) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -58,19 +22,18 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Catch 401 & Normalize Errors
+// Response Interceptor: when the session is no longer valid, sign out and go to the login page
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    // If 401 received and not yet retried, refresh admin token and retry once
-    if (error.response && error.response.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/admin/login')) {
-      originalRequest._retry = true;
+  (error) => {
+    const url = error.config?.url || '';
+    if (error.response?.status === 401 && !url.includes('/auth/admin/login')) {
       localStorage.removeItem('balerra_admin_token');
-      const newToken = await getOrFetchAdminToken();
-      if (newToken) {
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return apiClient(originalRequest);
+      localStorage.removeItem('balerra_admin_user');
+      localStorage.removeItem('balerra_admin_token_refreshed_at');
+      if (window.location.pathname !== '/login') {
+        localStorage.setItem('balerra_admin_return_to', window.location.pathname + window.location.search);
+        window.location.assign('/login');
       }
     }
     return Promise.reject(error);

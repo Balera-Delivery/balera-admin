@@ -1,21 +1,40 @@
 import React, { useState, useMemo } from 'react';
+import { ProfileIcon } from '../components/common/ProfileIcon';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Eye, Edit2, Trash2, Power, Bike, CheckCircle2, AlertTriangle, ShieldCheck, UserCheck } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { AddRiderModal } from '../components/modals/AddRiderModal';
 import { EditRiderModal } from '../components/modals/EditRiderModal';
+import { DeleteConfirmModal } from '../components/modals/DeleteConfirmModal';
 import { useDelivery } from '../context/DeliveryContext';
-import { useNotifications } from '../context/NotificationContext';
 
 export const Riders = () => {
   const { riders, toggleRiderOnline, toggleRiderActive, toggleRiderDeactivation, deleteRider, approveRider } = useDelivery();
-  const { addNotification } = useNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedRiderForEdit, setSelectedRiderForEdit] = useState(null);
+  const [riderToDelete, setRiderToDelete] = useState(null);
+  const [notice, setNotice] = useState(null); // { type: 'success' | 'error', text }
   const navigate = useNavigate();
+
+  const showNotice = (type, text) => {
+    setNotice({ type, text });
+    setTimeout(() => setNotice(null), 4000);
+  };
+
+  const handleToggleOnline = async (rider) => {
+    const res = await toggleRiderOnline(rider.id);
+    if (res?.success) showNotice('success', `${rider.name} is now ${res.status}.`);
+    else showNotice('error', res?.message || 'Could not change the rider status.');
+  };
+
+  const handleToggleDeactivation = async (rider) => {
+    const res = await toggleRiderDeactivation(rider.id);
+    if (res?.success) showNotice('success', `${rider.name} was ${res.deactivated ? 'deactivated' : 'activated'}.`);
+    else showNotice('error', res?.message || 'Could not update the rider.');
+  };
 
   // Pending approval count
   const pendingApprovalCount = useMemo(() => {
@@ -36,18 +55,21 @@ export const Riders = () => {
       if (!matchesSearch) return false;
       if (statusFilter === 'ACTIVE') return r.accountStatus === 'Active';
       if (statusFilter === 'PENDING') return r.accountStatus === 'Pending Approval';
-      if (statusFilter === 'SUSPENDED') return r.accountStatus === 'Suspended';
+      if (statusFilter === 'SUSPENDED') return r.accountStatus === 'Suspended' || r.accountStatus === 'Deactivated';
       return true;
     });
   }, [riders, searchQuery, statusFilter]);
 
   const handleApprove = async (rider) => {
-    await approveRider(rider.id);
-    addNotification({
-      title: `Rider ${rider.name} approved! Account is now Active and ready for mobile app login.`,
-      type: 'rider',
-      iconColor: 'text-emerald-600 bg-emerald-50'
-    });
+    const res = await approveRider(rider.id);
+    if (res?.success) showNotice('success', `${rider.name} was approved and can now sign in to the rider app.`);
+    else showNotice('error', res?.message || 'Could not approve the rider.');
+  };
+
+  const handleToggleActive = async (rider) => {
+    const res = await toggleRiderActive(rider.id);
+    if (res?.success) showNotice('success', `${rider.name} is now ${res.status}.`);
+    else showNotice('error', res?.message || 'Could not change the account status.');
   };
 
   return (
@@ -135,7 +157,7 @@ export const Riders = () => {
               statusFilter === 'SUSPENDED' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            Suspended ({riders.filter(r => r.accountStatus === 'Suspended').length})
+            Inactive ({riders.filter(r => r.accountStatus === 'Suspended' || r.accountStatus === 'Deactivated').length})
           </button>
         </div>
 
@@ -170,6 +192,7 @@ export const Riders = () => {
               {filteredRiders.map((rider) => {
                 const isPending = rider.accountStatus === 'Pending Approval';
                 const isActive = rider.accountStatus === 'Active';
+                const isDeactivated = rider.accountStatus === 'Deactivated';
 
                 return (
                   <tr key={rider.id} className="hover:bg-slate-50/80 transition-colors">
@@ -180,11 +203,7 @@ export const Riders = () => {
                     >
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <img
-                            src={rider.avatar}
-                            alt={rider.name}
-                            className="w-9 h-9 rounded-full object-cover ring-2 ring-slate-100"
-                          />
+                          <ProfileIcon className="w-9 h-9 rounded-full" label={rider.name} />
                           <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${rider.status === 'Online' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                         </div>
                         <div>
@@ -209,9 +228,10 @@ export const Riders = () => {
                     {/* Duty Status (Online / Offline) */}
                     <td className="px-6 py-4">
                       <button 
-                        onClick={() => toggleRiderOnline(rider.id)}
-                        title="Toggle Online/Offline duty state"
-                        className="cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => handleToggleOnline(rider)}
+                        disabled={!isActive}
+                        title={isActive ? `Click to set ${rider.status === 'Online' ? 'Offline' : 'Online'}` : 'Activate the rider first'}
+                        className="cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <StatusBadge status={rider.status} />
                       </button>
@@ -236,13 +256,18 @@ export const Riders = () => {
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                            isActive
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : isDeactivated
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-slate-100 text-slate-600'
                           }`}>
                             {rider.accountStatus}
                           </span>
+                          {!isDeactivated && (
                           <button
                             type="button"
-                            onClick={() => toggleRiderActive(rider.id)}
+                            onClick={() => handleToggleActive(rider)}
                             title={isActive ? "Click to suspend account" : "Click to activate account"}
                             className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                               isActive ? 'bg-brand-600' : 'bg-slate-300'
@@ -254,6 +279,7 @@ export const Riders = () => {
                               }`}
                             />
                           </button>
+                          )}
                         </div>
                       )}
                     </td>
@@ -279,22 +305,18 @@ export const Riders = () => {
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => toggleRiderDeactivation(rider.id)}
+                          onClick={() => handleToggleDeactivation(rider)}
                           className={`p-1.5 rounded-lg transition-colors ${
-                            isActive
-                              ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                              : 'text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50'
+                            isDeactivated
+                              ? 'text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50'
+                              : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
                           }`}
-                          title={isActive ? "Deactivate Rider (Suspend)" : "Activate Rider"}
+                          title={isDeactivated ? 'Activate Rider' : 'Deactivate Rider'}
                         >
                           <Power className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Remove rider ${rider.name}? Rider account will be removed while delivery history is preserved.`)) {
-                              deleteRider(rider.id);
-                            }
-                          }}
+                          onClick={() => setRiderToDelete(rider)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                           title="Remove Rider (Preserves History)"
                         >
@@ -319,20 +341,38 @@ export const Riders = () => {
 
         {/* Pagination Footer */}
         <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <span>Showing 1 to {filteredRiders.length} of {riders.length} riders</span>
-          <div className="flex items-center gap-1">
-            <button className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-400 cursor-not-allowed">
-              &lt;
-            </button>
-            <button className="px-3 py-1 rounded-lg bg-brand-600 text-white font-bold">
-              1
-            </button>
-            <button className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-400 cursor-not-allowed">
-              &gt;
-            </button>
-          </div>
+          <span>Showing {filteredRiders.length} of {riders.length} riders</span>
         </div>
       </div>
+
+      {/* Short success / error message (instead of a browser pop-up) */}
+      {notice && (
+        <div
+          role="status"
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 ${
+            notice.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+          }`}
+        >
+          {notice.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+          <span>{notice.text}</span>
+        </div>
+      )}
+
+      {/* Delete rider confirmation */}
+      <DeleteConfirmModal
+        isOpen={!!riderToDelete}
+        onClose={() => setRiderToDelete(null)}
+        onConfirm={async () => {
+          const name = riderToDelete?.name;
+          const res = await deleteRider(riderToDelete.id);
+          if (res?.success) showNotice('success', `${name} was removed.`);
+          else showNotice('error', res?.message || 'Could not remove the rider.');
+        }}
+        title="Remove rider"
+        itemName={riderToDelete?.name}
+        message="The rider will no longer be able to sign in. Their delivery history is kept."
+        confirmLabel="Remove rider"
+      />
 
       {/* Add Rider Modal */}
       <AddRiderModal

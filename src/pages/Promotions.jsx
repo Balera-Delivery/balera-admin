@@ -26,23 +26,13 @@ import {
 import { StatCard } from '../components/common/StatCard';
 import { AddPromotionModal } from '../components/modals/AddPromotionModal';
 import { EditPromotionModal } from '../components/modals/EditPromotionModal';
-import { promotionsApi, INITIAL_PROMOTIONS } from '../api/services/promotionsApi';
+import { DeleteConfirmModal } from '../components/modals/DeleteConfirmModal';
+import { promotionsApi } from '../api/services/promotionsApi';
 
 export const Promotions = () => {
-  const [promotions, setPromotions] = useState(() => {
-    try {
-      const saved = localStorage.getItem('balera_promotions_cache');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Filter out legacy mock data if present
-        const realOnly = parsed.filter(p => !['PROMO-001', 'PROMO-002', 'PROMO-003', 'PROMO-004'].includes(p.id));
-        return realOnly;
-      }
-      return [];
-    } catch {
-      return [];
-    }
-  });
+  const [promotions, setPromotions] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [notice, setNotice] = useState(null); // { type, text }
 
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,35 +42,30 @@ export const Promotions = () => {
   const [sharedId, setSharedId] = useState(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [promoToDelete, setPromoToDelete] = useState(null);
   const [editingPromotion, setEditingPromotion] = useState(null);
 
-  // Sync with API on mount
-  useEffect(() => {
-    loadPromotions();
-  }, []);
-
-  // Save to localStorage cache
-  useEffect(() => {
-    try {
-      localStorage.setItem('balera_promotions_cache', JSON.stringify(promotions));
-    } catch {}
-  }, [promotions]);
+  const showNotice = (type, text) => {
+    setNotice({ type, text });
+    setTimeout(() => setNotice(null), 4000);
+  };
 
   const loadPromotions = async () => {
     setIsLoading(true);
+    setLoadError('');
     try {
-      const data = await promotionsApi.getPromotions();
-      if (Array.isArray(data)) {
-        // Filter out legacy mock data if present
-        const realOnly = data.filter(p => !['PROMO-001', 'PROMO-002', 'PROMO-003', 'PROMO-004'].includes(p.id));
-        setPromotions(realOnly);
-      }
+      setPromotions(await promotionsApi.getPromotions());
     } catch (e) {
-      console.warn('Could not load promotions from API:', e);
+      setLoadError('Could not load promotions from the server. Press the refresh button to try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Load from the server when the page opens
+  useEffect(() => {
+    loadPromotions();
+  }, []);
 
   const handleCopyCode = (code) => {
     navigator.clipboard.writeText(code);
@@ -105,38 +90,51 @@ export const Promotions = () => {
     setTimeout(() => setSharedId(null), 2500);
   };
 
+  // Each action is shown only after the server saves it; failures return a message for the form
   const handleAddPromotion = async (newPromo) => {
     try {
       const created = await promotionsApi.createPromotion(newPromo);
       setPromotions(prev => [created, ...prev]);
+      showNotice('success', `Promotion ${newPromo.code} created.`);
+      return { success: true };
     } catch (e) {
-      setPromotions(prev => [{ ...newPromo, id: `PROMO-${Date.now()}`, usedCount: 0 }, ...prev]);
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
   };
 
   const handleUpdatePromotion = async (updatedPromo) => {
     try {
-      await promotionsApi.updatePromotion(updatedPromo.id, updatedPromo);
-      setPromotions(prev => prev.map(p => p.id === updatedPromo.id ? updatedPromo : p));
+      const saved = await promotionsApi.updatePromotion(updatedPromo.id, updatedPromo);
+      setPromotions(prev => prev.map(p => p.id === updatedPromo.id ? { ...updatedPromo, ...(saved || {}) } : p));
+      showNotice('success', 'Promotion updated.');
+      return { success: true };
     } catch (e) {
-      setPromotions(prev => prev.map(p => p.id === updatedPromo.id ? updatedPromo : p));
+      return { success: false, message: e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message };
     }
   };
 
   const handleToggleStatus = async (id) => {
-    setPromotions(prev => prev.map(p => {
-      if (p.id === id) {
-        return { ...p, isActive: !p.isActive };
-      }
-      return p;
-    }));
-    await promotionsApi.toggleStatus(id);
+    try {
+      await promotionsApi.toggleStatus(id);
+      setPromotions(prev => prev.map(p => p.id === id ? { ...p, isActive: !p.isActive } : p));
+    } catch (e) {
+      showNotice('error', e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message);
+    }
   };
 
-  const handleDeletePromotion = async (id) => {
-    if (window.confirm('Are you sure you want to delete this promotion campaign?')) {
-      setPromotions(prev => prev.filter(p => p.id !== id));
+  const handleDeletePromotion = (id) => {
+    setPromoToDelete(promotions.find(p => p.id === id) || { id });
+  };
+
+  const confirmDeletePromotion = async () => {
+    const id = promoToDelete?.id;
+    if (!id) return;
+    try {
       await promotionsApi.deletePromotion(id);
+      setPromotions(prev => prev.filter(p => p.id !== id));
+      showNotice('success', 'Promotion deleted.');
+    } catch (e) {
+      showNotice('error', e.response?.data?.error?.[0]?.message || e.response?.data?.message || e.message);
     }
   };
 
@@ -259,7 +257,7 @@ export const Promotions = () => {
       </div>
 
       {/* KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Active Campaigns"
           value={metrics.activeCount}
@@ -568,6 +566,27 @@ export const Promotions = () => {
           promotion={editingPromotion}
           onUpdatePromotion={handleUpdatePromotion}
         />
+      )}
+
+      {/* Delete promotion confirmation */}
+      <DeleteConfirmModal
+        isOpen={!!promoToDelete}
+        onClose={() => setPromoToDelete(null)}
+        onConfirm={confirmDeletePromotion}
+        title="Delete promotion"
+        itemName={promoToDelete?.code || promoToDelete?.title || 'this promotion'}
+        message="Customers will no longer be able to use this promo code."
+        confirmLabel="Delete promotion"
+      />
+      {loadError && (
+        <div role="alert" className="fixed bottom-6 left-6 right-6 sm:left-auto z-50 px-4 py-3 rounded-xl shadow-lg text-xs font-bold bg-amber-600 text-white">
+          {loadError}
+        </div>
+      )}
+      {notice && (
+        <div role="status" className={`fixed bottom-6 left-6 right-6 sm:left-auto z-50 px-4 py-3 rounded-xl shadow-lg text-xs font-bold ${notice.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+          {notice.text}
+        </div>
       )}
     </div>
   );

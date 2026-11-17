@@ -40,22 +40,22 @@ export const EditRiderModal = ({ isOpen, onClose, rider }) => {
     setIsSubmitting(true);
     setErrorMessage('');
 
-    try {
-      await editRider(rider.id, {
-        name: formData.name.trim(),
-        phone: formData.phone.trim(),
-        vehicle: formData.vehicle,
-        licensePlate: formData.licensePlate.trim(),
-        accountStatus: formData.accountStatus,
-      });
+    const res = await editRider(rider.id, {
+      name: formData.name.trim(),
+      phone: formData.phone.trim(),
+      vehicle: formData.vehicle,
+      licensePlate: formData.licensePlate.trim(),
+      accountStatus: formData.accountStatus,
+    });
+    if (res?.success) {
       setSuccess(true);
       setTimeout(() => {
         setIsSubmitting(false);
         onClose();
       }, 700);
-    } catch (err) {
+    } else {
       setIsSubmitting(false);
-      setErrorMessage(err.message || 'Failed to update rider profile.');
+      setErrorMessage(res?.message || 'Failed to update rider profile.');
     }
   };
 
