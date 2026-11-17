@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initialNotifications } from '../data/mockData';
 import { notificationApi } from '../api/services/notificationApi';
+import { onAdminNotification } from '../services/socket';
 
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState([]);
 
   // Sync notifications with backend on mount
   useEffect(() => {
@@ -13,7 +13,7 @@ export const NotificationProvider = ({ children }) => {
       try {
         const res = await notificationApi.getNotifications({ limit: 50 });
         const items = res.notifications || res.data?.notifications || res.data;
-        if (Array.isArray(items) && items.length > 0) {
+        if (Array.isArray(items)) {
           setNotifications(items.map(n => ({
             id: n.id || `NOTIF-${String(Date.now()).slice(-4)}`,
             title: n.title ? `${n.title}: ${n.message}` : n.message,
@@ -30,6 +30,28 @@ export const NotificationProvider = ({ children }) => {
     };
 
     fetchNotifs();
+
+    // ⚡ Real-Time WebSocket stream for instant admin notification alerts
+    const unsub = onAdminNotification((notif) => {
+      setNotifications((prev) => [
+        {
+          id: notif.id || `NOTIF-${String(Date.now()).slice(-4)}`,
+          title: notif.title ? `${notif.title}: ${notif.message}` : notif.message,
+          time: notif.createdAt
+            ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Just now',
+          date: notif.createdAt
+            ? new Date(notif.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Today',
+          type: notif.userRole === 'RIDER' ? 'rider' : 'system',
+          isRead: false,
+          iconColor: 'text-brand-600 bg-brand-50',
+        },
+        ...prev,
+      ]);
+    });
+
+    return () => unsub();
   }, []);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -52,27 +74,33 @@ export const NotificationProvider = ({ children }) => {
     setNotifications(prev => prev.map(n => n.id === id ? ({ ...n, isRead: true }) : n));
   };
 
-  const addNotification = async ({ title, message, targetRole = 'ALL', type = 'info', iconColor }) => {
+  const deleteNotification = async (id) => {
     try {
-      await notificationApi.sendNotification({
-        targetRole,
-        title: title || 'Admin Notice',
-        message: message || title,
-      });
-    } catch (err) {
-      console.warn('Backend sendNotification notice:', err.message);
+      await notificationApi.deleteNotification(id);
+    } catch (e) {
+      console.warn('Backend deleteNotification notice:', e.message);
     }
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
-    const newNotif = {
-      id: `NOTIF-${String(Date.now()).slice(-4)}`,
-      title: title || message,
-      time: 'Just now',
-      date: 'Today',
-      type,
-      isRead: false,
-      iconColor: iconColor || 'text-brand-600 bg-brand-50'
-    };
-    setNotifications(prev => [newNotif, ...prev]);
+  const clearAllNotifications = async () => {
+    try {
+      await notificationApi.clearAllNotifications();
+    } catch (e) {
+      console.warn('Backend clearAllNotifications notice:', e.message);
+    }
+    setNotifications([]);
+  };
+
+  // Sends a push message to the chosen users (targetRole: 'ALL' | 'CUSTOMER' | 'RIDER').
+  // Returns the real result so the page can show success or the error.
+  const sendBroadcast = async ({ targetRole, title, message }) => {
+    try {
+      await notificationApi.sendNotification({ targetRole, title, message });
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || err.message };
+    }
+    return { success: true };
   };
 
   return (
@@ -81,7 +109,9 @@ export const NotificationProvider = ({ children }) => {
       unreadCount,
       markAllAsRead,
       markAsRead,
-      addNotification
+      deleteNotification,
+      clearAllNotifications,
+      sendBroadcast
     }}>
       {children}
     </NotificationContext.Provider>

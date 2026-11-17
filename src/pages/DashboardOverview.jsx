@@ -14,32 +14,28 @@ export const DashboardOverview = () => {
     {
       title: 'Total Customers',
       value: stats.totalCustomers.toLocaleString(),
-      change: stats.customerGrowth,
-      isPositive: true,
-      subtitle: 'vs last month',
+      subtitle: `${stats.newCustomersThisMonth} new this month`,
       icon: Users,
     },
     {
       title: 'Total Riders',
       value: stats.totalRiders.toLocaleString(),
-      change: stats.riderGrowth,
-      isPositive: true,
-      subtitle: 'vs last month',
+      subtitle: `${stats.onlineRiders} online now · ${stats.newRidersThisMonth} new this month`,
       icon: Bike,
     },
     {
       title: "Today's Deliveries",
       value: stats.todayDeliveries.toLocaleString(),
-      change: stats.todayDeliveriesGrowth,
-      isPositive: true,
+      change: stats.todayDeliveriesChange,
+      isPositive: stats.todayDeliveriesUp,
       subtitle: 'vs yesterday',
       icon: Package,
     },
     {
       title: 'Completed Today',
       value: stats.completedToday.toLocaleString(),
-      change: stats.completedGrowth,
-      isPositive: true,
+      change: stats.completedTodayChange,
+      isPositive: stats.completedTodayUp,
       subtitle: 'vs yesterday',
       icon: CheckCircle2,
     },
@@ -50,13 +46,13 @@ export const DashboardOverview = () => {
     { label: 'Pending', count: stats.pendingCount, color: 'text-amber-600 bg-amber-50 border-amber-200', dot: 'bg-amber-500' },
     { label: 'Assigned', count: stats.assignedCount, color: 'text-blue-600 bg-blue-50 border-blue-200', dot: 'bg-blue-500' },
     { label: 'In Progress', count: stats.inProgressCount, color: 'text-orange-600 bg-orange-50 border-orange-200', dot: 'bg-orange-500' },
-    { label: 'Completed Today', count: stats.completedCount, color: 'text-emerald-600 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' },
+    { label: 'Completed', count: stats.completedCount, color: 'text-emerald-600 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' },
   ];
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto">
       {/* Top 4 KPI Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {topKpis.map((kpi, idx) => (
           <StatCard key={idx} {...kpi} />
         ))}

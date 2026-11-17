@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Building2, 
   Settings as SettingsIcon, 
@@ -6,7 +6,6 @@ import {
   CreditCard, 
   Shield, 
   Check, 
-  Upload,
   Lock,
   Mail,
   Phone,
@@ -15,6 +14,7 @@ import {
 import { BalerraLogo } from '../components/common/BalerraLogo';
 import { useDelivery } from '../context/DeliveryContext';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../api/services/authApi';
 
 export const Settings = () => {
   const { settings, updateSettings } = useDelivery();
@@ -23,6 +23,22 @@ export const Settings = () => {
   const [activeTab, setActiveTab] = useState('General');
   const [formData, setFormData] = useState({ ...settings });
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Settings arrive from the backend after this page opens (and re-sync every few seconds).
+  // Refresh only fields the admin hasn't edited, so typing is never overwritten.
+  const lastSyncedSettings = useRef(settings);
+  useEffect(() => {
+    const previous = lastSyncedSettings.current;
+    setFormData((form) => {
+      const next = { ...form };
+      for (const [key, value] of Object.entries(settings)) {
+        const untouched = form[key] === undefined || form[key] === previous[key];
+        if (untouched) next[key] = value;
+      }
+      return next;
+    });
+    lastSyncedSettings.current = settings;
+  }, [settings]);
 
   // Security password state
   const [passwordState, setPasswordState] = useState({
@@ -39,21 +55,51 @@ export const Settings = () => {
     { id: 'Security', label: 'Security', icon: Shield },
   ];
 
-  const handleSave = (e) => {
+  const [saveError, setSaveError] = useState('');
+  const handleSave = async (e) => {
     e.preventDefault();
-    updateSettings(formData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    setSaveError('');
+    const res = await updateSettings(formData);
+    if (res?.success) {
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } else {
+      setSaveError(res?.message || 'Could not save the settings.');
+    }
   };
 
-  const handlePasswordChange = (e) => {
+  // { type: 'success' | 'error', text } shown under the password form (no browser pop-ups)
+  const [passwordMessage, setPasswordMessage] = useState(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
-    if (passwordState.newPassword !== passwordState.confirmPassword) {
-      alert('New passwords do not match!');
+    setPasswordMessage(null);
+    if (passwordState.newPassword.length < 6) {
+      setPasswordMessage({ type: 'error', text: 'The new password must be at least 6 characters.' });
       return;
     }
-    alert('Admin password updated successfully!');
-    setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    if (passwordState.newPassword !== passwordState.confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'The new passwords do not match.' });
+      return;
+    }
+    if (passwordState.newPassword === passwordState.currentPassword) {
+      setPasswordMessage({ type: 'error', text: 'The new password must be different from the current one.' });
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await authApi.changePassword(passwordState.currentPassword, passwordState.newPassword);
+      setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordMessage({ type: 'success', text: 'Your password was changed. Use the new password next time you sign in.' });
+    } catch (err) {
+      setPasswordMessage({
+        type: 'error',
+        text: err.response?.data?.message || err.message || 'Could not change the password.',
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   return (
@@ -115,7 +161,7 @@ export const Settings = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Contact Phone Number</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Support Phone Number <span className="font-medium text-slate-400">(riders call this for help)</span></label>
                 <input
                   type="text"
                   value={formData.companyPhone}
@@ -139,29 +185,23 @@ export const Settings = () => {
             <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50/60 p-5 rounded-2xl border border-slate-200/60">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center">
-                  <img src="/logo.svg" alt="Balerra Logo" className="w-full h-full object-contain" />
+                  <img src="/balera_app_logo.png" alt="Balerra Logo" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-900">Balerra Delivery Brand Logo</h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">SVG or PNG format (recommended 400x400px)</p>
-                  <p className="text-[10px] text-brand-600 font-semibold mt-1">
+                                    <p className="text-[10px] text-brand-600 font-semibold mt-1">
                     "From Bale. Delivered Smart. / Balee Irraa. Sirnaan Geessina."
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => alert('Logo upload dialog triggered.')}
-                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs shadow-sm transition-colors inline-flex items-center gap-1.5"
-              >
-                <Upload className="w-3.5 h-3.5 text-brand-600" />
-                <span>Change Logo</span>
-              </button>
             </div>
 
             {/* Action Bar */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              {saveError && (
+                <span role="alert" className="text-xs font-bold text-rose-600">{saveError}</span>
+              )}
               {savedSuccess && (
                 <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
                   <Check className="w-4 h-4" /> Settings updated successfully!
@@ -180,24 +220,61 @@ export const Settings = () => {
         {/* Payment & Pricing Tab */}
         {activeTab === 'Payment' && (
           <form onSubmit={handleSave} className="space-y-6">
+            {/* Delivery Pricing (the server uses these for every customer checkout) */}
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">Delivery Pricing</h3>
+              <p className="text-[11px] text-slate-400">
+                One delivery fee for every order (food and package). When you save, new checkouts in the
+                customer app use the new fee right away. Orders already placed keep their price.
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Default Delivery Fee (ETB)</label>
+                <label htmlFor="delivery-fee" className="block text-xs font-bold text-slate-700 mb-1.5">Delivery Fee (ETB)</label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">ETB</span>
                   <input
+                    id="delivery-fee"
                     type="number"
-                    value={formData.defaultDeliveryFee}
-                    onChange={(e) => setFormData({ ...formData, defaultDeliveryFee: Number(e.target.value) })}
-                    className="w-full pl-12 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-900"
+                    min="1"
+                    max="10000"
+                    step="1"
+                    required
+                    value={formData.delivery_fee ?? 100}
+                    onChange={(e) => setFormData({ ...formData, delivery_fee: e.target.value })}
+                    className="w-full pl-12 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-900"
                   />
                 </div>
+                <p className="text-[11px] text-slate-400 mt-1">The customer pays this for each delivery.</p>
+              </div>
+
+              <div>
+                <label htmlFor="extra-stop-fee" className="block text-xs font-bold text-slate-700 mb-1.5">Extra Restaurant Fee (ETB)</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">ETB</span>
+                  <input
+                    id="extra-stop-fee"
+                    type="number"
+                    min="0"
+                    max="10000"
+                    step="1"
+                    value={formData.extra_stop_fee ?? 30}
+                    onChange={(e) => setFormData({ ...formData, extra_stop_fee: e.target.value })}
+                    className="w-full pl-12 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-900"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Added for each extra restaurant in one order. Example: 2 restaurants ={' '}
+                  {Number(formData.delivery_fee ?? 100) || 0} + {Number(formData.extra_stop_fee ?? 30) || 0} ={' '}
+                  {(Number(formData.delivery_fee ?? 100) || 0) + (Number(formData.extra_stop_fee ?? 30) || 0)} ETB.
+                </p>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">System Currency</label>
                 <select
-                  value={formData.currency}
+                  value={formData.currency || 'ETB - Ethiopian Birr'}
                   onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-semibold text-slate-900"
                 >
@@ -207,14 +284,75 @@ export const Settings = () => {
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-              <p className="font-bold text-slate-800">Supported Payout Channels for Riders:</p>
-              <p>• Telebirr (Ethio Telecom)</p>
-              <p>• Commercial Bank of Ethiopia (CBE / CBE Birr)</p>
-              <p>• Direct Bank Transfer</p>
+            {/* Platform Settlement & Payout Credentials Section */}
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">
+                Admin & Rider Settlement Credentials
+              </h3>
+              <p className="text-[11px] text-slate-400 mb-4">
+                Bank account and mobile payment phone numbers used for courier payout settlements and customer bank transfers.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Primary Settlement Bank</label>
+                  <select
+                    value={formData.settlementBankName || 'Commercial Bank of Ethiopia (CBE)'}
+                    onChange={(e) => setFormData({ ...formData, settlementBankName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-semibold text-slate-900"
+                  >
+                    <option value="Commercial Bank of Ethiopia (CBE)">Commercial Bank of Ethiopia (CBE)</option>
+                    <option value="Awash Bank">Awash Bank</option>
+                    <option value="Bank of Abyssinia (BOA)">Bank of Abyssinia (BOA)</option>
+                    <option value="Dashen Bank">Dashen Bank</option>
+                    <option value="Cooperative Bank of Oromia">Cooperative Bank of Oromia</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Bank Account Number</label>
+                  <input
+                    type="text"
+                    value={formData.settlementAccountNumber || '1000189372648'}
+                    onChange={(e) => setFormData({ ...formData, settlementAccountNumber: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-mono text-slate-900 font-semibold"
+                    placeholder="e.g. 1000123456789"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Account Beneficiary Name</label>
+                  <input
+                    type="text"
+                    value={formData.settlementAccountName || 'Balera Delivery Services PLC'}
+                    onChange={(e) => setFormData({ ...formData, settlementAccountName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none text-slate-900 font-semibold"
+                    placeholder="e.g. Balera Delivery Services PLC"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Telebirr / Mobile Money Phone Number</label>
+                  <input
+                    type="text"
+                    value={formData.settlementTelebirrPhone || '+251 911 223 344'}
+                    onChange={(e) => setFormData({ ...formData, settlementTelebirrPhone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-mono text-slate-900 font-semibold"
+                    placeholder="+251 911 000 000"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              {saveError && (
+                <span role="alert" className="text-xs font-bold text-rose-600">{saveError}</span>
+              )}
+              {savedSuccess && (
+                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                  <Check className="w-4 h-4" /> Payment credentials saved!
+                </span>
+              )}
               <button
                 type="submit"
                 className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-sm shadow-brand-500/25 transition-all"
@@ -227,34 +365,68 @@ export const Settings = () => {
 
         {/* Notifications Tab */}
         {activeTab === 'Notifications' && (
-          <div className="space-y-6">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">System Notification Triggers</h3>
-            <div className="space-y-4 text-xs">
-              <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
-                <div>
-                  <span className="font-bold text-slate-900 block">Push Notifications for New Delivery Requests</span>
-                  <span className="text-slate-500">Alert admin instantly when a customer submits a request</span>
+          <form onSubmit={handleSave} className="space-y-6">
+            {/* Resend Integration Block */}
+            <div className="p-5 bg-gradient-to-br from-slate-50 to-indigo-50/40 border border-slate-200 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Mail className="w-5 h-5 text-brand-600" />
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Resend Email Alerts Integration
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Sends automated email notifications for delivery milestones, rider assignments, and payout receipts.
+                    </p>
+                  </div>
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600" />
-              </label>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Resend Connected
+                </span>
+              </div>
 
-              <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <div>
-                  <span className="font-bold text-slate-900 block">Rider Acceptance & Rejection Alerts</span>
-                  <span className="text-slate-500">Notify admin immediately if a rider rejects so re-assignment can occur</span>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Resend API Key</label>
+                  <input
+                    type="password"
+                    value={formData.resendApiKey || 're_balera_live_pk_748293'}
+                    onChange={(e) => setFormData({ ...formData, resendApiKey: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-mono"
+                    placeholder="re_xxxxxxxxxxxxxxxxx"
+                  />
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600" />
-              </label>
 
-              <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
                 <div>
-                  <span className="font-bold text-slate-900 block">OTP Verification SMS Delivery</span>
-                  <span className="text-slate-500">Send secure 4-digit OTP code to the recipient upon delivery pickup</span>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Sender Email Address</label>
+                  <input
+                    type="email"
+                    value={formData.resendSenderEmail || 'orders@baleradelivery.com'}
+                    onChange={(e) => setFormData({ ...formData, resendSenderEmail: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-mono"
+                    placeholder="notifications@baleradelivery.com"
+                  />
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-brand-600" />
-              </label>
+              </div>
             </div>
-          </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              {saveError && (
+                <span role="alert" className="text-xs font-bold text-rose-600">{saveError}</span>
+              )}
+              {savedSuccess && (
+                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                  <Check className="w-4 h-4" /> Notification settings saved!
+                </span>
+              )}
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-sm shadow-brand-500/25 transition-all"
+              >
+                Save Notification Settings
+              </button>
+            </div>
+          </form>
         )}
 
         {/* Security Tab */}
@@ -293,12 +465,27 @@ export const Settings = () => {
               />
             </div>
 
+            {passwordMessage && (
+              <div
+                role="status"
+                className={`flex items-start gap-2 p-3 rounded-xl text-xs font-semibold border ${
+                  passwordMessage.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-rose-50 border-rose-200 text-rose-700'
+                }`}
+              >
+                <Check className={`w-4 h-4 shrink-0 ${passwordMessage.type === 'success' ? '' : 'hidden'}`} />
+                <span>{passwordMessage.text}</span>
+              </div>
+            )}
+
             <div className="pt-2">
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-sm shadow-brand-500/25 transition-all"
+                disabled={isChangingPassword}
+                className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-sm shadow-brand-500/25 transition-all disabled:opacity-70"
               >
-                Update Password
+                {isChangingPassword ? 'Updating…' : 'Update Password'}
               </button>
             </div>
           </form>

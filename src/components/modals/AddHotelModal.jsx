@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Modal } from '../common/Modal';
 import { useHotels } from '../../context/HotelContext';
-import { Building2, Phone, MapPin, Clock, Image as ImageIcon, Sparkles, Upload, X, Check } from 'lucide-react';
+import { BALERA_DEFAULT_BANNER } from '../../data/hotelData';
+import { Building2, Phone, MapPin, Clock, Image as ImageIcon, Sparkles, Upload, X, Check, RotateCcw } from 'lucide-react';
 
 const CATEGORY_OPTIONS = [
   'Cafe & Restaurant',
@@ -12,15 +13,6 @@ const CATEGORY_OPTIONS = [
   'Pizza & Bakery',
   'Juice Bar & Healthy',
   'International Cuisine',
-];
-
-const PRESET_BANNERS = [
-  { label: 'Restaurant & Dining', url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80' },
-  { label: 'Traditional Ethiopian', url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80' },
-  { label: 'Grill & Tibs', url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80' },
-  { label: 'Pizza & Cafe', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80' },
-  { label: 'Burger & Diner', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80' },
-  { label: 'Luxury Hotel', url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop&q=80' },
 ];
 
 export const AddHotelModal = ({ isOpen, onClose }) => {
@@ -36,7 +28,7 @@ export const AddHotelModal = ({ isOpen, onClose }) => {
     address: 'Bale Robe, Ethiopia',
     openingHours: '07:00 AM - 10:00 PM',
     status: 'Active',
-    banner: PRESET_BANNERS[0].url,
+    banner: BALERA_DEFAULT_BANNER,
     avatar: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80',
   });
 
@@ -77,7 +69,7 @@ export const AddHotelModal = ({ isOpen, onClose }) => {
       address: 'Bale Robe, Ethiopia',
       openingHours: '07:00 AM - 10:00 PM',
       status: 'Active',
-      banner: PRESET_BANNERS[0].url,
+      banner: BALERA_DEFAULT_BANNER,
       avatar: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80',
     });
   };
@@ -217,65 +209,77 @@ export const AddHotelModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* Cover Image: Upload File + Recommendations */}
+        {/* Cover Image: Upload File from Device or Use Balera Logo */}
         <div className="space-y-3">
           <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <ImageIcon className="w-3.5 h-3.5 text-brand-600" />
-              Cover Image
+              Partner Cover Page
             </span>
-            <span className="text-[11px] text-slate-400 font-normal">Upload your own photo or pick a recommendation</span>
+            <span className="text-[11px] text-slate-400 font-normal">
+              Default Balera logo banner is active. Upload from device to replace.
+            </span>
           </label>
 
-          {/* Upload Button & Preview */}
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              accept="image/*"
-              className="hidden"
-            />
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <Upload className="w-4 h-4 text-brand-600" />
-              <span>Upload Cover Image from Device</span>
-            </button>
-
-            {formData.banner && (
-              <div className="flex items-center gap-2">
-                <div className="relative w-16 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-2xs">
-                  <img src={formData.banner} alt="Cover Preview" className="w-full h-full object-cover" />
-                </div>
-                <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> Selected
-                </span>
+          {/* Banner Card Preview & Upload Controls */}
+          <div className="p-3 bg-slate-50 border border-slate-200/90 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-28 h-16 rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shadow-2xs shrink-0">
+                <img
+                  src={formData.banner || BALERA_DEFAULT_BANNER}
+                  alt="Cover Preview"
+                  className="w-full h-full object-cover"
+                />
               </div>
-            )}
-          </div>
-
-          {/* Recommendations Presets */}
-          <div>
-            <span className="text-[11px] font-semibold text-slate-500 block mb-1.5">Or choose from recommendations:</span>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {PRESET_BANNERS.map((b, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setFormData({ ...formData, banner: b.url })}
-                  className={`relative h-14 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-                    formData.banner === b.url ? 'border-brand-600 ring-2 ring-brand-400/40 scale-102' : 'border-transparent opacity-75 hover:opacity-100'
-                  }`}
-                >
-                  <img src={b.url} alt={b.label} className="w-full h-full object-cover" />
-                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-white px-1 py-0.5 text-center truncate font-medium">
-                    {b.label}
-                  </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  {formData.banner === BALERA_DEFAULT_BANNER ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-100 text-brand-700">
+                      Balera Logo Cover
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Custom Image Selected
+                    </span>
+                  )}
                 </div>
-              ))}
+                <p className="text-[11px] text-slate-500">
+                  {formData.banner === BALERA_DEFAULT_BANNER
+                    ? 'Default Balera establishment cover'
+                    : 'Custom cover image loaded from device'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3.5 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              >
+                <Upload className="w-3.5 h-3.5 text-brand-600" />
+                <span>{formData.banner === BALERA_DEFAULT_BANNER ? 'Upload from Device' : 'Change Image'}</span>
+              </button>
+
+              {formData.banner !== BALERA_DEFAULT_BANNER && (
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, banner: BALERA_DEFAULT_BANNER }))}
+                  className="px-2.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Reset to default Balera logo"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, ShieldCheck, MapPin, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Login = () => {
-  const [email, setEmail] = useState('admin@balera.com');
-  const [password, setPassword] = useState('AdminPassword@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // After signing in, go back to the page the admin was on (if any)
+  const returnTo = (() => {
+    const from = location.state?.from || localStorage.getItem('balerra_admin_return_to');
+    return from && from.startsWith('/') && !from.startsWith('/login') ? from : '/';
+  })();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,9 +26,10 @@ export const Login = () => {
     setIsLoading(true);
 
     try {
-      const res = await login(email, password, rememberMe);
+      const res = await login(email, password);
       if (res.success) {
-        navigate('/');
+        localStorage.removeItem('balerra_admin_return_to');
+        navigate(returnTo, { replace: true });
       } else {
         setError(res.message || 'Login failed. Please check your credentials.');
       }
@@ -33,17 +40,22 @@ export const Login = () => {
     }
   };
 
+  // Already signed in (saved session): skip the login page
+  if (isAuthenticated) {
+    return <Navigate to={returnTo} replace />;
+  }
+
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#F8FAFC]">
+    <div className="min-h-dvh w-full flex flex-col md:flex-row bg-[#F8FAFC]">
       {/* Left: Brand & Illustration Showcase */}
-      <div className="w-full md:w-1/2 bg-gradient-to-br from-brand-50 via-white to-blue-100 flex flex-col items-center justify-between p-8 md:p-12 border-r border-slate-200/80 relative overflow-hidden">
+      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-brand-50 via-white to-blue-100 flex-col items-center justify-between p-12 border-r border-slate-200/80 relative overflow-hidden">
         <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-brand-200/30 blur-3xl pointer-events-none"></div>
         <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-blue-300/20 blur-3xl pointer-events-none"></div>
 
         {/* Top Logo */}
         <div className="w-full max-w-md flex flex-col items-center text-center z-10 pt-4">
           <div className="w-40 h-40 relative drop-shadow-md mb-4 animate-in fade-in zoom-in duration-500">
-            <img src="/logo.svg" alt="Balerra Delivery" className="w-full h-full object-contain" />
+            <img src="/balera_app_logo.png" alt="Balerra Delivery" className="w-full h-full object-contain" />
           </div>
           
           <h2 className="text-xl font-extrabold text-[#0B3C95] tracking-wide italic">
@@ -94,15 +106,22 @@ export const Login = () => {
 
         {/* Footer info */}
         <div className="text-center text-[11px] text-slate-400 font-medium z-10">
-          <p>© 2024 Balerra Delivery. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Balera Delivery. All rights reserved.</p>
         </div>
       </div>
 
       {/* Right: Login Form */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-8 md:p-16">
-        <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-200/50">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome Back!</h2>
+      <div className="w-full md:w-1/2 flex-1 flex flex-col items-center justify-center px-4 py-8 sm:p-8 md:p-16 bg-gradient-to-b from-brand-50 via-[#F8FAFC] to-[#F8FAFC] md:bg-none">
+        {/* Phone: small logo above the card (the big brand panel is shown on larger screens) */}
+        <div className="md:hidden flex flex-col items-center text-center mb-6">
+          <img src="/balera_app_logo.png" alt="Balera Delivery" className="w-20 h-20 object-contain drop-shadow-md" />
+          <p className="mt-3 text-base font-extrabold text-[#0B3C95] tracking-wide italic">BALERA DELIVERY</p>
+          <p className="text-[11px] font-bold text-brand-700 tracking-wider mt-0.5">Admin Dashboard</p>
+        </div>
+
+        <div className="w-full max-w-md bg-white p-6 sm:p-8 md:p-10 rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-200/50">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Welcome Back!</h2>
             <p className="text-sm font-medium text-slate-500 mt-1">
               Sign in to your admin account to manage operations.
             </p>
@@ -127,7 +146,7 @@ export const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@balera.com"
+                  placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all placeholder:text-slate-400"
                 />
               </div>
@@ -157,22 +176,6 @@ export const Login = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded text-brand-600 accent-brand-600 border-slate-300"
-                />
-                <span className="font-semibold text-slate-600">Remember Me</span>
-              </label>
-
-              <a href="#forgot" onClick={(e) => { e.preventDefault(); alert('Please contact system administrator to reset password.'); }} className="font-bold text-brand-600 hover:text-brand-700">
-                Forgot Password?
-              </a>
-            </div>
-
             <button
               type="submit"
               disabled={isLoading}
@@ -189,12 +192,11 @@ export const Login = () => {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <p className="text-xs text-slate-400">
-              API Server: <span className="font-mono text-slate-600">http://localhost:5000/api/v1</span>
-            </p>
-          </div>
         </div>
+
+        <p className="md:hidden mt-6 text-center text-[11px] text-slate-400 font-medium">
+          © {new Date().getFullYear()} Balera Delivery. All rights reserved.
+        </p>
       </div>
     </div>
   );

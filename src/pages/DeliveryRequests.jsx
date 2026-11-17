@@ -11,7 +11,9 @@ export const DeliveryRequests = () => {
   
   const { deliveries } = useDelivery();
   const [statusFilter, setStatusFilter] = useState('All Status');
-  const [dateFilter, setDateFilter] = useState('May 10, 2024');
+  const [dateFilter, setDateFilter] = useState(() =>
+    new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  );
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedDeliveryToAssign, setSelectedDeliveryToAssign] = useState(null);
 
@@ -129,7 +131,18 @@ export const DeliveryRequests = () => {
                         {delivery.pickupLocation}
                       </span>
                     </div>
-                    {delivery.restaurant && (
+                    {delivery.pickupStops?.length > 1 ? (
+                      // Multi-hotel order: show every hotel the rider must visit
+                      <span
+                        className="text-[11px] text-brand-600 font-medium block mt-0.5 truncate max-w-[260px]"
+                        title={delivery.pickupStops.map((s) => s.name).join(', ')}
+                      >
+                        <span className="inline-block px-1.5 py-px mr-1 rounded bg-amber-100 text-amber-800 font-bold">
+                          {delivery.pickupStops.length} hotels
+                        </span>
+                        {delivery.pickupStops.map((s) => s.name).join(' · ')}
+                      </span>
+                    ) : delivery.restaurant && (
                       <span className="text-[11px] text-brand-600 font-medium block mt-0.5">
                         {delivery.restaurant.name}
                       </span>
@@ -179,18 +192,7 @@ export const DeliveryRequests = () => {
 
         {/* Pagination Footer */}
         <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <span>Showing 1 to {filteredDeliveries.length} of {deliveries.length} requests</span>
-          <div className="flex items-center gap-1">
-            <button className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-400 cursor-not-allowed">
-              &lt;
-            </button>
-            <button className="px-3 py-1 rounded-lg bg-brand-600 text-white font-bold">
-              1
-            </button>
-            <button className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-400 cursor-not-allowed">
-              &gt;
-            </button>
-          </div>
+          <span>Showing {filteredDeliveries.length} of {deliveries.length} requests</span>
         </div>
       </div>
 

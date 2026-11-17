@@ -7,6 +7,12 @@ export const authApi = {
     return res.data;
   },
 
+  // Swap the current (still valid) admin token for a fresh one
+  refreshSession: async () => {
+    const res = await apiClient.post('/auth/admin/refresh');
+    return res.data;
+  },
+
   // Get current user profile
   getMe: async () => {
     const res = await apiClient.get('/auth/me');

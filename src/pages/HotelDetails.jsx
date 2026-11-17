@@ -9,7 +9,6 @@ import {
   MapPin, 
   Clock, 
   UtensilsCrossed, 
-  Star, 
   Edit3, 
   Trash2, 
   DollarSign, 
@@ -30,6 +29,7 @@ import { EditFoodModal } from '../components/modals/EditFoodModal';
 import { EditHotelModal } from '../components/modals/EditHotelModal';
 import { EditHotelPhonesModal } from '../components/modals/EditHotelPhonesModal';
 import { DeleteConfirmModal } from '../components/modals/DeleteConfirmModal';
+import { BackButton } from '../components/common/BackButton';
 
 export const HotelDetails = () => {
   const { id } = useParams();
@@ -91,7 +91,7 @@ export const HotelDetails = () => {
           className="mt-4 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Hotels & Restaurants</span>
+          <span>Back to Partner Management</span>
         </button>
       </div>
     );
@@ -103,19 +103,13 @@ export const HotelDetails = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Breadcrumb Navigation */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/hotels')}
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-brand-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Hotels Directory</span>
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <BackButton fallback="/hotels" parentLabel="Partner Management" currentLabel={hotel.name} />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             onClick={() => setIsEditHotelOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-colors whitespace-nowrap"
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span>Edit Profile</span>
@@ -123,7 +117,7 @@ export const HotelDetails = () => {
 
           <button
             onClick={() => setIsDeleteHotelOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold shadow-2xs transition-colors whitespace-nowrap"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Delete Hotel</span>
@@ -146,24 +140,18 @@ export const HotelDetails = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => toggleHotelStatus(hotel.id)}
-                className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-md transition-transform active:scale-95 ${
+                className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-md transition-transform active:scale-95 cursor-pointer ${
                   hotel.status === 'Active'
                     ? 'bg-emerald-500/90 text-white hover:bg-emerald-600'
                     : 'bg-rose-500/90 text-white hover:bg-rose-600'
                 }`}
                 title="Click to toggle status"
               >
-                ● {hotel.status} (Click to toggle)
+                ● {hotel.status}
               </button>
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/90 text-slate-800 backdrop-blur-md">
                 {hotel.category}
               </span>
-            </div>
-
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-400 text-slate-900 shadow-sm">
-              <Star className="w-3.5 h-3.5 fill-slate-900" />
-              <span>{hotel.rating}</span>
-              <span className="text-[10px] text-slate-700 font-normal">({hotel.totalReviews} reviews)</span>
             </div>
           </div>
 
@@ -220,17 +208,17 @@ export const HotelDetails = () => {
               <Phone className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Official Establishment Phone Contacts</h3>
-              <p className="text-[11px] text-slate-400">Used by dispatchers, riders, and customers for order clarifications</p>
+              <h3 className="text-sm font-bold text-slate-900">Contact Phone Numbers</h3>
+              <p className="text-xs text-slate-400">Direct phone numbers for order dispatch</p>
             </div>
           </div>
 
           <button
             onClick={() => setIsEditPhonesOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 text-brand-700 hover:bg-brand-100 text-xs font-bold transition-colors self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 text-brand-700 hover:bg-brand-100 text-xs font-bold transition-colors self-start sm:self-auto cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span>Edit Phone Numbers</span>
+            <span>Edit Phones</span>
           </button>
         </div>
 
@@ -238,42 +226,42 @@ export const HotelDetails = () => {
           {/* Phone 1 */}
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Phone (Phone 1)</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Phone</span>
               {hotel.phone1 ? (
                 <div className="text-sm font-mono font-bold text-slate-900 flex items-center gap-2">
                   <span>{hotel.phone1}</span>
                   <span className="px-1.5 py-0.2 text-[10px] font-semibold bg-emerald-100 text-emerald-800 rounded">Active</span>
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic">No phone number added yet</p>
+                <p className="text-xs text-slate-400 italic">No phone number added</p>
               )}
             </div>
             <button
               onClick={() => setIsEditPhonesOpen(true)}
-              className="text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline shrink-0"
+              className="text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline shrink-0 cursor-pointer"
             >
-              {hotel.phone1 ? 'Change' : '+ Add Phone 1'}
+              {hotel.phone1 ? 'Change' : '+ Add'}
             </button>
           </div>
 
           {/* Phone 2 */}
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Secondary Phone (Phone 2)</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Secondary Phone</span>
               {hotel.phone2 ? (
                 <div className="text-sm font-mono font-bold text-slate-900 flex items-center gap-2">
                   <span>{hotel.phone2}</span>
                   <span className="px-1.5 py-0.2 text-[10px] font-semibold bg-blue-100 text-blue-800 rounded">Backup</span>
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic">No phone number added yet</p>
+                <p className="text-xs text-slate-400 italic">No phone number added</p>
               )}
             </div>
             <button
               onClick={() => setIsEditPhonesOpen(true)}
-              className="text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline shrink-0"
+              className="text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline shrink-0 cursor-pointer"
             >
-              {hotel.phone2 ? 'Change' : '+ Add Phone 2'}
+              {hotel.phone2 ? 'Change' : '+ Add'}
             </button>
           </div>
         </div>

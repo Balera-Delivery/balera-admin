@@ -1,15 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { initialHotels } from '../data/hotelData';
+import { initialHotels, BALERA_DEFAULT_BANNER } from '../data/hotelData';
 import { hotelApi } from '../api/services/hotelApi';
 
 const HotelContext = createContext();
 
-const STORAGE_KEY = 'balera_hotels_data_v1';
+const STORAGE_KEY = 'balera_hotels_data_v2';
 
 // Helper to normalize backend restaurant object for frontend UI
 const normalizeHotel = (h) => {
   const hotelId = h.code || h.id;
   const backendId = h.id;
+
+  // Use Balera official cover if missing or if legacy Unsplash placeholder
+  const isLegacyUnsplash = typeof h.banner === 'string' && h.banner.includes('unsplash.com');
+  const banner = !h.banner || isLegacyUnsplash ? BALERA_DEFAULT_BANNER : h.banner;
 
   return {
     id: hotelId,
@@ -32,7 +36,7 @@ const normalizeHotel = (h) => {
     status: h.status || 'Active',
     openingHours: h.openingHours || '07:00 AM - 10:00 PM',
     isPartner: h.isPartner !== undefined ? h.isPartner : true,
-    banner: h.banner || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+    banner: banner,
     avatar: h.avatar || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80',
     foods: Array.isArray(h.foods)
       ? h.foods.map((f) => ({
@@ -120,6 +124,16 @@ export const HotelProvider = ({ children }) => {
     fetchHotels();
   }, [fetchHotels]);
 
+  // Error shown when a save fails (the list is reloaded from the server to undo the change)
+  const [actionError, setActionError] = useState('');
+  const reportFailure = useCallback((err, what) => {
+    const msg = err?.response?.data?.error?.[0]?.message || err?.response?.data?.message || err?.message || 'Server error';
+    setActionError(`Could not ${what}: ${msg}`);
+    setTimeout(() => setActionError(''), 6000);
+    fetchHotels();
+    return { success: false, message: msg };
+  }, [fetchHotels]);
+
   // Hotel Actions
   const addHotel = useCallback(async (hotelData) => {
     setIsSyncing(true);
@@ -135,8 +149,8 @@ export const HotelProvider = ({ children }) => {
       cuisineType: hotelData.cuisineType || 'Local & Traditional Cuisine',
       phone1: hotelData.phone1 || '',
       phone2: hotelData.phone2 || '',
-      address: hotelData.address || 'Bale Robe, Ethiopia',
-      rating: Number(hotelData.rating) || 4.8,
+      address: hotelData.address || '',
+      rating: Number(hotelData.rating) || 0,
       totalReviews: Number(hotelData.totalReviews) || 0,
       deliveryTime: hotelData.deliveryTime || '25 - 40 min',
       deliveryFee: Number(hotelData.deliveryFee) || 60,
@@ -144,8 +158,8 @@ export const HotelProvider = ({ children }) => {
       status: hotelData.status || 'Active',
       openingHours: hotelData.openingHours || '07:00 AM - 10:00 PM',
       isPartner: true,
-      banner: hotelData.banner || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
-      avatar: hotelData.avatar || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80',
+      banner: hotelData.banner || BALERA_DEFAULT_BANNER,
+      avatar: hotelData.avatar || '',
       foods: hotelData.foods || [],
     };
 
@@ -179,13 +193,12 @@ export const HotelProvider = ({ children }) => {
         return savedHotel;
       }
     } catch (err) {
-      console.error('Failed to create hotel on backend:', err);
+      return reportFailure(err, 'add the restaurant');
     } finally {
       setIsSyncing(false);
     }
-
     return localHotel;
-  }, [hotels.length]);
+  }, [hotels.length, reportFailure]);
 
   const updateHotel = useCallback(async (id, updatedFields) => {
     setIsSyncing(true);
@@ -202,11 +215,12 @@ export const HotelProvider = ({ children }) => {
     try {
       await hotelApi.updateHotel(id, updatedFields);
     } catch (err) {
-      console.error('Failed to update hotel on backend:', err);
+      return reportFailure(err, 'save the restaurant');
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+    return { success: true };
+  }, [reportFailure]);
 
   const deleteHotel = useCallback(async (id) => {
     setIsSyncing(true);
@@ -216,11 +230,12 @@ export const HotelProvider = ({ children }) => {
     try {
       await hotelApi.deleteHotel(id);
     } catch (err) {
-      console.error('Failed to delete hotel on backend:', err);
+      return reportFailure(err, 'delete the restaurant');
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+    return { success: true };
+  }, [reportFailure]);
 
   const toggleHotelStatus = useCallback(async (id) => {
     setIsSyncing(true);
@@ -239,11 +254,12 @@ export const HotelProvider = ({ children }) => {
     try {
       await hotelApi.toggleHotelStatus(id, targetStatus);
     } catch (err) {
-      console.error('Failed to toggle hotel status on backend:', err);
+      return reportFailure(err, 'change the restaurant status');
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+    return { success: true };
+  }, [reportFailure]);
 
   const updateHotelPhones = useCallback(async (id, phone1, phone2) => {
     setIsSyncing(true);
@@ -263,11 +279,12 @@ export const HotelProvider = ({ children }) => {
     try {
       await hotelApi.updateHotelPhones(id, phone1, phone2);
     } catch (err) {
-      console.error('Failed to update hotel phones on backend:', err);
+      return reportFailure(err, 'save the phone numbers');
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+    return { success: true };
+  }, [reportFailure]);
 
   // Food Item Actions
   const addFoodItem = useCallback(async (hotelId, foodData) => {
@@ -284,7 +301,7 @@ export const HotelProvider = ({ children }) => {
       description: foodData.description || '',
       isAvailable: foodData.isAvailable !== undefined ? foodData.isAvailable : true,
       tag: foodData.tag || '',
-      image: foodData.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop&q=80',
+      image: foodData.image || '',
     };
 
     // Optimistic UI update
@@ -340,13 +357,12 @@ export const HotelProvider = ({ children }) => {
         return savedFood;
       }
     } catch (err) {
-      console.error('Failed to add food item on backend:', err);
+      return reportFailure(err, 'add the dish');
     } finally {
       setIsSyncing(false);
     }
-
     return newFood;
-  }, []);
+  }, [reportFailure]);
 
   const updateFoodItem = useCallback(async (hotelId, foodId, updatedFields) => {
     setIsSyncing(true);
@@ -374,11 +390,12 @@ export const HotelProvider = ({ children }) => {
     try {
       await hotelApi.updateFoodItem(foodId, updatedFields);
     } catch (err) {
-      console.error('Failed to update food item on backend:', err);
+      return reportFailure(err, 'save the dish');
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+    return { success: true };
+  }, [reportFailure]);
 
   const deleteFoodItem = useCallback(async (hotelId, foodId) => {
     setIsSyncing(true);
@@ -397,11 +414,12 @@ export const HotelProvider = ({ children }) => {
     try {
       await hotelApi.deleteFoodItem(foodId);
     } catch (err) {
-      console.error('Failed to delete food item on backend:', err);
+      return reportFailure(err, 'delete the dish');
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+    return { success: true };
+  }, [reportFailure]);
 
   const toggleFoodAvailability = useCallback(async (hotelId, foodId) => {
     setIsSyncing(true);
@@ -428,11 +446,12 @@ export const HotelProvider = ({ children }) => {
     try {
       await hotelApi.toggleFoodAvailability(foodId, targetAvailability);
     } catch (err) {
-      console.error('Failed to toggle food availability on backend:', err);
+      return reportFailure(err, 'change the dish availability');
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+    return { success: true };
+  }, [reportFailure]);
 
   const getHotelById = useCallback((id) => {
     if (!id) return null;
@@ -510,9 +529,18 @@ export const HotelProvider = ({ children }) => {
         toggleFoodAvailability,
         getHotelById,
         resetToDefaults,
+        actionError,
       }}
     >
       {children}
+      {actionError && (
+        <div
+          role="alert"
+          className="fixed bottom-6 left-6 right-6 sm:left-auto sm:max-w-md z-[60] px-4 py-3 rounded-xl shadow-lg text-xs font-bold bg-rose-600 text-white"
+        >
+          {actionError}
+        </div>
+      )}
     </HotelContext.Provider>
   );
 };

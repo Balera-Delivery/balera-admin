@@ -9,14 +9,18 @@ import {
   XCircle, 
   AlertTriangle,
   Send,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
+import { DeleteConfirmModal } from '../components/modals/DeleteConfirmModal';
 
 export const Notifications = () => {
-  const { notifications, unreadCount, markAllAsRead, markAsRead, addNotification } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, markAsRead, deleteNotification, clearAllNotifications, sendBroadcast } = useNotifications();
   const [broadcastMessage, setBroadcastMessage] = useState('');
-  const [targetAudience, setTargetAudience] = useState('all');
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [targetAudience, setTargetAudience] = useState('ALL');
+  const [broadcastResult, setBroadcastResult] = useState(null); // { type, text }
   const [isSending, setIsSending] = useState(false);
 
   const getIcon = (type) => {
@@ -37,20 +41,23 @@ export const Notifications = () => {
     }
   };
 
-  const handleSendBroadcast = (e) => {
-    e.preventDefault();
-    if (!broadcastMessage.trim()) return;
-    setIsSending(true);
+  const audienceLabel = { ALL: 'all customers and riders', CUSTOMER: 'all customers', RIDER: 'all riders' };
 
-    setTimeout(() => {
-      addNotification({
-        title: `Broadcast to ${targetAudience}: "${broadcastMessage.trim()}"`,
-        type: 'system',
-        iconColor: 'text-brand-600 bg-brand-50'
-      });
+  const handleSendBroadcast = async (e) => {
+    e.preventDefault();
+    const text = broadcastMessage.trim();
+    if (!text) return;
+    setIsSending(true);
+    setBroadcastResult(null);
+    const res = await sendBroadcast({ targetRole: targetAudience, title: 'Balera Delivery', message: text });
+    setIsSending(false);
+    if (res?.success) {
       setBroadcastMessage('');
-      setIsSending(false);
-    }, 300);
+      setBroadcastResult({ type: 'success', text: `Sent to ${audienceLabel[targetAudience]}.` });
+    } else {
+      setBroadcastResult({ type: 'error', text: res?.message || 'Could not send the message.' });
+    }
+    setTimeout(() => setBroadcastResult(null), 5000);
   };
 
   return (
@@ -62,21 +69,34 @@ export const Notifications = () => {
           <p className="text-xs font-medium text-slate-400 mt-0.5">System notifications and dispatch activity logs</p>
         </div>
 
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-brand-600 rounded-xl text-xs font-bold shadow-sm transition-all"
-          >
-            <CheckCheck className="w-4 h-4" />
-            <span>Mark all as read</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2.5">
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-brand-600 rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <CheckCheck className="w-4 h-4" />
+              <span>Mark all read</span>
+            </button>
+          )}
+
+          {notifications.length > 0 && (
+            <button
+              onClick={() => setConfirmClearAll(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 rounded-xl text-xs font-bold shadow-sm transition-all"
+              title="Delete all notifications"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear all</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Broadcast Announcement Bar (Admin feature from SRS 10.11) */}
+      {/* Broadcast announcement */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
         <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">
-          Send System Notification (SRS 10.11)
+          Send System Notification
         </h3>
         <form onSubmit={handleSendBroadcast} className="flex flex-col sm:flex-row items-center gap-3">
           <select
@@ -84,9 +104,9 @@ export const Notifications = () => {
             onChange={(e) => setTargetAudience(e.target.value)}
             className="w-full sm:w-44 px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20"
           >
-            <option value="All Users">All Users</option>
-            <option value="All Riders">All Riders</option>
-            <option value="All Customers">All Customers</option>
+            <option value="ALL">All customers and riders</option>
+            <option value="CUSTOMER">All customers</option>
+            <option value="RIDER">All riders</option>
           </select>
 
           <input
@@ -103,9 +123,17 @@ export const Notifications = () => {
             className="w-full sm:w-auto px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm shadow-brand-500/25"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Send</span>
+            <span>{isSending ? 'Sending…' : 'Send'}</span>
           </button>
         </form>
+        {broadcastResult && (
+          <p
+            role="status"
+            className={`mt-3 text-xs font-bold ${broadcastResult.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}
+          >
+            {broadcastResult.text}
+          </p>
+        )}
       </div>
 
       {/* Notifications List */}
@@ -135,9 +163,22 @@ export const Notifications = () => {
               </div>
             </div>
 
-            {!notif.isRead && (
-              <span className="w-2 h-2 rounded-full bg-brand-600 flex-shrink-0 mt-2"></span>
-            )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {!notif.isRead && (
+                <span className="w-2 h-2 rounded-full bg-brand-600"></span>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteNotification(notif.id);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                title="Delete notification"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         ))}
 
@@ -147,6 +188,17 @@ export const Notifications = () => {
           </div>
         )}
       </div>
+
+      {/* Clear all confirmation */}
+      <DeleteConfirmModal
+        isOpen={confirmClearAll}
+        onClose={() => setConfirmClearAll(false)}
+        onConfirm={() => clearAllNotifications()}
+        title="Clear all notifications"
+        itemName={`all ${notifications.length} notifications`}
+        message="Every notification in this list will be deleted."
+        confirmLabel="Clear all"
+      />
     </div>
   );
 };
